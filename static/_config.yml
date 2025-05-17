@@ -1,4 +1,3 @@
-# CHANGEME: Set these variable to your liking
-title: ESPHome Project Template
-description: Powered by ESPHome and ESP Web Tools
+title: ESPHome-EUC
+description: ESPHome EUC Sensor
 theme: jekyll-theme-slate
