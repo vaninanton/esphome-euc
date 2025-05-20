@@ -1,9 +1,5 @@
 esphome:
-  name: esphome-euc
-  friendly_name: ESPHome EUC Sensor
-  # Automatically add the mac address to the name
-  # so you can use a single firmware for all devices
-  name_add_mac_suffix: false
+  name: esphome-ble-scan
 
 esp32:
   board: esp32dev
@@ -12,7 +8,7 @@ esp32:
 
 # To be able to get logs from the device via serial and api.
 logger:
-  level: VERY_VERBOSE
+  # level: VERY_VERBOSE
 
 # OTA is required for Over-the-Air updating
 ota:
@@ -30,18 +26,6 @@ web_server:
   port: 80
   include_internal: false
   version: 3
-  sorting_groups:
-    - id: sorting_group_states
-      name: "States"
-      sorting_weight: 1
-    - id: sorting_group_sensors
-      name: "Sensors"
-      sorting_weight: 2
-
-esp32_improv:
-  authorizer: none
-
-improv_serial:
 
 esp32_ble_tracker:
   on_ble_advertise:
