@@ -1,13 +1,67 @@
-# ESPHome Project Template
+# ESPHome EUC Monitor для Inmotion V11
 
-This repo serves as a template for creating a new ESPHome project.
+Этот проект предназначен для мониторинга состояния моноколеса **Inmotion V11** и гарнитуры **Fodsports FX7** с использованием **ESP32** и **ESPHome**. Подключение происходит по Bluetooth Low Energy (BLE).
 
-It includes a GitHub workflow that will automatically build the configuration(s) and then deploys a simple 
-website via GitHub pages that utilises [ESP Web Tools](https://esphome.github.io/esp-web-tools/) for users to 
-easily install your project onto their device.
+## Возможности
 
-## Instructions
+- Подключение к моноколесу Inmotion и получение:
+  - Заряда аккумулятора (%)
+  - Напряжения (V)
+  - Тока (A)
+  - Потребляемой мощности (W)
+  - Статуса зарядки и подъема колеса
 
-1. Use this repo template to [generate](https://github.com/esphome/esphome-project-template/generate) your own repository.
-2. Clone your new repository.
-3. Follow the checklist created as an issue in your new repository.
+- Подключение к гарнитуре Fodsports FX7 и получение:
+  - Уровня заряда батареи
+  - Уровня сигнала (RSSI)
+
+- Веб-интерфейс с показателями
+- Интеграция с Home Assistant
+
+## Требования
+
+- Плата ESP32 (например, ESP32 DevKit v1)
+- ESPHome установленный на компьютере (для прошивки)
+- BLE-адреса устройств Inmotion и Fodsports FX7
+
+## Установка
+
+### 1. Клонирование проекта
+
+```bash
+git clone git@github.com:vaninanton/esphome-euc.git
+```
+
+### 2. Подготовка secrets.yaml
+
+Создай файл secrets.yaml и укажи в нём:
+
+```yaml
+wifi_ssid: "ТвояСетьWiFi"
+wifi_password: "ПарольОтWiFi"
+ha_encryption_key: "КлючИзHomeAssistant"
+```
+
+### 3. Подключение ESP32 и прошивка
+
+Прошивка:
+
+```bash
+esphome run esphome-euc-esp32.yaml
+```
+
+### 4. Проверка
+
+После прошивки устройство автоматически подключится к Wi-Fi, BLE-устройствам и начнёт передавать данные.
+Открой веб-интерфейс по IP-адресу устройства или через Home Assistant.
+
+### Примечания
+
+BLE-адреса (MAC) моноколеса и гарнитуры заданы в substitutions в начале файла esphome-euc-esp32.yaml.
+
+Если используешь другие устройства, обязательно замени MAC-адреса на свои. Для поиска MAC-адресов BLE устройств можно прошить данную программу:
+
+```bash
+esphome run esphome-ble-scan-esp32.yaml
+```
+
