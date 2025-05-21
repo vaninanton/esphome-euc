@@ -28,5 +28,7 @@ web_server:
   version: 3
 
 esp32_ble_tracker:
-  on_ble_advertise:
-    - then:
+
+text_sensor:
+  - platform: ble_scanner
+    name: "BLE Devices Scanner"
