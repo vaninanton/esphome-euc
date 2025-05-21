@@ -9,8 +9,8 @@ substitutions:
   # Intercom Services
   intercom_name: "Fodsports FX7"
   intercom_mac: "10:90:41:00:38:04"
-  intercom_battery_service_uuid: ""
-  intercom_battery_char_uuid: ""
+  intercom_battery_service_uuid: "180f"
+  intercom_battery_char_uuid: "2a19"
 
 esphome:
   name: esphome-euc
@@ -210,8 +210,8 @@ sensor:
     type: characteristic
     ble_client_id: intercom
     name: "${intercom_name} Battery"
-    service_uuid: "180f"
-    characteristic_uuid: "2a19"
+    service_uuid: ${intercom_battery_service_uuid}
+    characteristic_uuid: ${intercom_battery_char_uuid}
     icon: "mdi:battery"
     unit_of_measurement: "%"
     web_server:
