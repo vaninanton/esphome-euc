@@ -142,15 +142,9 @@ sensor:
 
       id(euc_charging).publish_state(isCharging);
       id(euc_lifted).publish_state(isLifted);
-      if (batteryPercentage > 0) {
         id(euc_battery).publish_state(batteryPercentage / 100.0f);
-      }
-      if (voltageValue > 0) {
         id(euc_voltage).publish_state(voltageValue / 100.0f);
-      }
-      if (currentValue > 0) {
         id(euc_current).publish_state(currentValue / 100.0f);
-      }
       id(euc_power).publish_state(powerValue);
 
       id(status).turn_off().perform();
@@ -165,6 +159,12 @@ sensor:
     state_class: measurement
     unit_of_measurement: '%'
     accuracy_decimals: 2
+    filters:
+    - timeout: 10s
+    - clamp:
+        min_value: 1
+        max_value: 100
+        ignore_out_of_range: true
     web_server:
       sorting_weight: 10
       sorting_group_id: sorting_group_sensors
@@ -177,6 +177,12 @@ sensor:
     state_class: measurement
     unit_of_measurement: 'V'
     accuracy_decimals: 2
+    filters:
+    - timeout: 10s
+    - clamp:
+        min_value: 50
+        max_value: 85
+        ignore_out_of_range: true
     web_server:
       sorting_weight: 20
       sorting_group_id: sorting_group_sensors
