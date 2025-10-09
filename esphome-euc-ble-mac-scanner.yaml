@@ -1,0 +1,30 @@
+esphome:
+  name: ble-mac-scanner
+  friendly_name: ESPHome EUC Sensor
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+
+logger:
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+
+ota:
+  - platform: esphome
+    password: !secret wifi_password
+
+web_server:
+  port: 80
+  include_internal: false
+  version: 3
+
+esp32_ble_tracker:
+
+text_sensor:
+  - platform: ble_scanner
+    name: "BLE Devices Scanner"

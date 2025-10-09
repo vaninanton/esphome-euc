@@ -1,0 +1,890 @@
+substitutions:
+  # EUC Settings
+  euc_name: "Veteran Lynx"
+  euc_mac: !secret euc_veteran_mac
+external_components:
+  - source: my_components
+esphome:
+  name: esphome-euc
+  friendly_name: ESPHome EUC Sensor
+  area: "Прихожая"
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+  # variant: ESP32
+  # flash_size: 4MB
+  # cpu_frequency: 240MHZ
+logger:
+  logs:
+    ble_sensor: ERROR
+    binary_sensor: ERROR
+    component: ERROR
+    esp32_ble_client: ERROR
+    light: ERROR
+    sensor: ERROR
+    text_sensor: ERROR
+    esp32_ble_tracker: ERROR
+    safe_mode: ERROR
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  fast_connect: true
+  ap:
+api:
+  encryption:
+    key: !secret ha_encryption_key
+ota:
+  - platform: esphome
+    password: !secret wifi_password
+web_server:
+  port: 80
+  include_internal: false
+  version: 3
+output:
+  - platform: gpio
+    pin: GPIO2
+    id: gpio_d2
+light:
+  - platform: binary
+    name: EUC Connected LED
+    id: status
+    output: gpio_d2
+    internal: true
+    entity_category: "diagnostic"
+esp32_ble_tracker:
+ble_client:
+  - mac_address: "${euc_mac}"
+    id: euc
+    auto_connect: true
+    on_connect:
+      then:
+        - lambda: |-
+            id(connected).publish_state(true);
+            id(ble_connect_switch).publish_state(true);
+            id(status).turn_on().perform();
+    on_disconnect:
+      then:
+        - lambda: |-
+            id(connected).publish_state(false);
+            id(ble_connect_switch).publish_state(false);
+            id(status).turn_off().perform();
+button:
+  - platform: restart
+    name: "Restart ESP32"
+    entity_category: "diagnostic"
+sensor:
+  - platform: ble_client
+    id: states
+    internal: true
+    entity_category: diagnostic
+    ble_client_id: euc
+    type: characteristic
+    notify: true
+    service_uuid: FFE0
+    characteristic_uuid: FFE1
+    lambda: |-
+      id(veteran_ext).parse_ble_packet(x);
+      return {};
+binary_sensor:
+  - platform: template
+    id: connected
+    name: "${euc_name} Connected"
+    icon: mdi:bluetooth
+    device_class: connectivity
+  - platform: gpio
+    pin:
+      number: GPIO0
+      inverted: true
+      mode: INPUT_PULLUP
+    name: "Boot Button"
+    internal: true
+    entity_category: "diagnostic"
+    on_press:
+      - switch.toggle: ble_connect_switch
+veteran:
+  id: veteran_ext
+  auto_off:
+    id: auto_off
+    name: "${euc_name} Auto Off"
+    icon: mdi:progress-clock
+    device_class: duration
+    state_class: measurement
+    unit_of_measurement: min
+    accuracy_decimals: 0
+  charging_stop_voltage:
+    id: charging_stop_voltage
+    name: "${euc_name} Stop charging at"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 2
+  bms_current_left:
+    id: bms_current_left
+    name: "${euc_name} bms current left"
+    icon: mdi:current-ac
+    device_class: current
+    state_class: measurement
+    unit_of_measurement: "A"
+    accuracy_decimals: 2
+  bms_current_right:
+    id: bms_current_right
+    name: "${euc_name} bms current right"
+    icon: mdi:current-ac
+    device_class: current
+    state_class: measurement
+    unit_of_measurement: "A"
+    accuracy_decimals: 2
+  temperature_motor:
+    id: temperature_motor
+    name: "${euc_name} Temperature motor"
+    icon: mdi:temperature-celsius
+    device_class: temperature
+    state_class: measurement
+    unit_of_measurement: "°C"
+    accuracy_decimals: 2
+  temperature_controller:
+    id: temperature_controller
+    name: "${euc_name} Temperature controller"
+    icon: mdi:temperature-celsius
+    device_class: temperature
+    state_class: measurement
+    unit_of_measurement: "°C"
+    accuracy_decimals: 2
+  bms_left_cell_01:
+    id: bms_left_cell_01
+    name: "${euc_name} BMS Left Cell01"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_left_cell_02:
+    id: bms_left_cell_02
+    name: "${euc_name} BMS Left Cell02"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_left_cell_03:
+    id: bms_left_cell_03
+    name: "${euc_name} BMS Left Cell03"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_left_cell_04:
+    id: bms_left_cell_04
+    name: "${euc_name} BMS Left Cell04"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_left_cell_05:
+    id: bms_left_cell_05
+    name: "${euc_name} BMS Left Cell05"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_left_cell_06:
+    id: bms_left_cell_06
+    name: "${euc_name} BMS Left Cell06"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_left_cell_07:
+    id: bms_left_cell_07
+    name: "${euc_name} BMS Left Cell07"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_left_cell_08:
+    id: bms_left_cell_08
+    name: "${euc_name} BMS Left Cell08"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_left_cell_09:
+    id: bms_left_cell_09
+    name: "${euc_name} BMS Left Cell09"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_left_cell_10:
+    id: bms_left_cell_10
+    name: "${euc_name} BMS Left Cell10"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_left_cell_11:
+    id: bms_left_cell_11
+    name: "${euc_name} BMS Left Cell11"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_left_cell_12:
+    id: bms_left_cell_12
+    name: "${euc_name} BMS Left Cell12"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_left_cell_13:
+    id: bms_left_cell_13
+    name: "${euc_name} BMS Left Cell13"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_left_cell_14:
+    id: bms_left_cell_14
+    name: "${euc_name} BMS Left Cell14"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_left_cell_15:
+    id: bms_left_cell_15
+    name: "${euc_name} BMS Left Cell15"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_left_cell_16:
+    id: bms_left_cell_16
+    name: "${euc_name} BMS Left Cell16"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_left_cell_17:
+    id: bms_left_cell_17
+    name: "${euc_name} BMS Left Cell17"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_left_cell_18:
+    id: bms_left_cell_18
+    name: "${euc_name} BMS Left Cell18"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_left_cell_19:
+    id: bms_left_cell_19
+    name: "${euc_name} BMS Left Cell19"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_left_cell_20:
+    id: bms_left_cell_20
+    name: "${euc_name} BMS Left Cell20"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_left_cell_21:
+    id: bms_left_cell_21
+    name: "${euc_name} BMS Left Cell21"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_left_cell_22:
+    id: bms_left_cell_22
+    name: "${euc_name} BMS Left Cell22"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_left_cell_23:
+    id: bms_left_cell_23
+    name: "${euc_name} BMS Left Cell23"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_left_cell_24:
+    id: bms_left_cell_24
+    name: "${euc_name} BMS Left Cell24"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_left_cell_25:
+    id: bms_left_cell_25
+    name: "${euc_name} BMS Left Cell25"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_left_cell_26:
+    id: bms_left_cell_26
+    name: "${euc_name} BMS Left Cell26"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_left_cell_27:
+    id: bms_left_cell_27
+    name: "${euc_name} BMS Left Cell27"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_left_cell_28:
+    id: bms_left_cell_28
+    name: "${euc_name} BMS Left Cell28"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_left_cell_29:
+    id: bms_left_cell_29
+    name: "${euc_name} BMS Left Cell29"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_left_cell_30:
+    id: bms_left_cell_30
+    name: "${euc_name} BMS Left Cell30"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_left_cell_31:
+    id: bms_left_cell_31
+    name: "${euc_name} BMS Left Cell31"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_left_cell_32:
+    id: bms_left_cell_32
+    name: "${euc_name} BMS Left Cell32"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_left_cell_33:
+    id: bms_left_cell_33
+    name: "${euc_name} BMS Left Cell33"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_left_cell_34:
+    id: bms_left_cell_34
+    name: "${euc_name} BMS Left Cell34"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_left_cell_35:
+    id: bms_left_cell_35
+    name: "${euc_name} BMS Left Cell35"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_left_cell_36:
+    id: bms_left_cell_36
+    name: "${euc_name} BMS Left Cell36"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_right_cell_01:
+    id: bms_right_cell_01
+    name: "${euc_name} BMS Right Cell01"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_right_cell_02:
+    id: bms_right_cell_02
+    name: "${euc_name} BMS Right Cell02"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_right_cell_03:
+    id: bms_right_cell_03
+    name: "${euc_name} BMS Right Cell03"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_right_cell_04:
+    id: bms_right_cell_04
+    name: "${euc_name} BMS Right Cell04"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_right_cell_05:
+    id: bms_right_cell_05
+    name: "${euc_name} BMS Right Cell05"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_right_cell_06:
+    id: bms_right_cell_06
+    name: "${euc_name} BMS Right Cell06"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_right_cell_07:
+    id: bms_right_cell_07
+    name: "${euc_name} BMS Right Cell07"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_right_cell_08:
+    id: bms_right_cell_08
+    name: "${euc_name} BMS Right Cell08"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_right_cell_09:
+    id: bms_right_cell_09
+    name: "${euc_name} BMS Right Cell09"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_right_cell_10:
+    id: bms_right_cell_10
+    name: "${euc_name} BMS Right Cell10"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_right_cell_11:
+    id: bms_right_cell_11
+    name: "${euc_name} BMS Right Cell11"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_right_cell_12:
+    id: bms_right_cell_12
+    name: "${euc_name} BMS Right Cell12"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_right_cell_13:
+    id: bms_right_cell_13
+    name: "${euc_name} BMS Right Cell13"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_right_cell_14:
+    id: bms_right_cell_14
+    name: "${euc_name} BMS Right Cell14"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_right_cell_15:
+    id: bms_right_cell_15
+    name: "${euc_name} BMS Right Cell15"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_right_cell_16:
+    id: bms_right_cell_16
+    name: "${euc_name} BMS Right Cell16"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_right_cell_17:
+    id: bms_right_cell_17
+    name: "${euc_name} BMS Right Cell17"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_right_cell_18:
+    id: bms_right_cell_18
+    name: "${euc_name} BMS Right Cell18"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_right_cell_19:
+    id: bms_right_cell_19
+    name: "${euc_name} BMS Right Cell19"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_right_cell_20:
+    id: bms_right_cell_20
+    name: "${euc_name} BMS Right Cell20"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_right_cell_21:
+    id: bms_right_cell_21
+    name: "${euc_name} BMS Right Cell21"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_right_cell_22:
+    id: bms_right_cell_22
+    name: "${euc_name} BMS Right Cell22"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_right_cell_23:
+    id: bms_right_cell_23
+    name: "${euc_name} BMS Right Cell23"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_right_cell_24:
+    id: bms_right_cell_24
+    name: "${euc_name} BMS Right Cell24"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_right_cell_25:
+    id: bms_right_cell_25
+    name: "${euc_name} BMS Right Cell25"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_right_cell_26:
+    id: bms_right_cell_26
+    name: "${euc_name} BMS Right Cell26"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_right_cell_27:
+    id: bms_right_cell_27
+    name: "${euc_name} BMS Right Cell27"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_right_cell_28:
+    id: bms_right_cell_28
+    name: "${euc_name} BMS Right Cell28"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_right_cell_29:
+    id: bms_right_cell_29
+    name: "${euc_name} BMS Right Cell29"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_right_cell_30:
+    id: bms_right_cell_30
+    name: "${euc_name} BMS Right Cell30"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_right_cell_31:
+    id: bms_right_cell_31
+    name: "${euc_name} BMS Right Cell31"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_right_cell_32:
+    id: bms_right_cell_32
+    name: "${euc_name} BMS Right Cell32"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_right_cell_33:
+    id: bms_right_cell_33
+    name: "${euc_name} BMS Right Cell33"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_right_cell_34:
+    id: bms_right_cell_34
+    name: "${euc_name} BMS Right Cell34"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_right_cell_35:
+    id: bms_right_cell_35
+    name: "${euc_name} BMS Right Cell35"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_right_cell_36:
+    id: bms_right_cell_36
+    name: "${euc_name} BMS Right Cell36"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_left_temp_1:
+    id: bms_left_temp_1
+    name: "${euc_name} BMS Left Temperature 1"
+    icon: mdi:temperature-celsius
+    device_class: temperature
+    state_class: measurement
+    unit_of_measurement: "°C"
+    accuracy_decimals: 2
+  bms_left_temp_2:
+    id: bms_left_temp_2
+    name: "${euc_name} BMS Left Temperature 2"
+    icon: mdi:temperature-celsius
+    device_class: temperature
+    state_class: measurement
+    unit_of_measurement: "°C"
+    accuracy_decimals: 2
+  bms_left_temp_3:
+    id: bms_left_temp_3
+    name: "${euc_name} BMS Left Temperature 3"
+    icon: mdi:temperature-celsius
+    device_class: temperature
+    state_class: measurement
+    unit_of_measurement: "°C"
+    accuracy_decimals: 2
+  bms_left_temp_4:
+    id: bms_left_temp_4
+    name: "${euc_name} BMS Left Temperature 4"
+    icon: mdi:temperature-celsius
+    device_class: temperature
+    state_class: measurement
+    unit_of_measurement: "°C"
+    accuracy_decimals: 2
+  bms_left_temp_5:
+    id: bms_left_temp_5
+    name: "${euc_name} BMS Left Temperature 5"
+    icon: mdi:temperature-celsius
+    device_class: temperature
+    state_class: measurement
+    unit_of_measurement: "°C"
+    accuracy_decimals: 2
+  bms_left_temp_6:
+    id: bms_left_temp_6
+    name: "${euc_name} BMS Left Temperature 6"
+    icon: mdi:temperature-celsius
+    device_class: temperature
+    state_class: measurement
+    unit_of_measurement: "°C"
+    accuracy_decimals: 2
+  bms_right_temp_1:
+    id: bms_right_temp_1
+    name: "${euc_name} BMS Right Temperature 1"
+    icon: mdi:temperature-celsius
+    device_class: temperature
+    state_class: measurement
+    unit_of_measurement: "°C"
+    accuracy_decimals: 2
+  bms_right_temp_2:
+    id: bms_right_temp_2
+    name: "${euc_name} BMS Right Temperature 2"
+    icon: mdi:temperature-celsius
+    device_class: temperature
+    state_class: measurement
+    unit_of_measurement: "°C"
+    accuracy_decimals: 2
+  bms_right_temp_3:
+    id: bms_right_temp_3
+    name: "${euc_name} BMS Right Temperature 3"
+    icon: mdi:temperature-celsius
+    device_class: temperature
+    state_class: measurement
+    unit_of_measurement: "°C"
+    accuracy_decimals: 2
+  bms_right_temp_4:
+    id: bms_right_temp_4
+    name: "${euc_name} BMS Right Temperature 4"
+    icon: mdi:temperature-celsius
+    device_class: temperature
+    state_class: measurement
+    unit_of_measurement: "°C"
+    accuracy_decimals: 2
+  bms_right_temp_5:
+    id: bms_right_temp_5
+    name: "${euc_name} BMS Right Temperature 5"
+    icon: mdi:temperature-celsius
+    device_class: temperature
+    state_class: measurement
+    unit_of_measurement: "°C"
+    accuracy_decimals: 2
+  bms_right_temp_6:
+    id: bms_right_temp_6
+    name: "${euc_name} BMS Right Temperature 6"
+    icon: mdi:temperature-celsius
+    device_class: temperature
+    state_class: measurement
+    unit_of_measurement: "°C"
+    accuracy_decimals: 2
+  tho_ra:
+    id: tho_ra
+    name: "${euc_name} Tho_ra"
+    state_class: measurement
+    unit_of_measurement: "%"
+    accuracy_decimals: 0
+  mileage_current:
+    id: mileage_current
+    name: "${euc_name} Mileage current"
+    device_class: distance
+    state_class: measurement
+    unit_of_measurement: "km"
+    accuracy_decimals: 2
+  mileage_total:
+    id: mileage_total
+    icon: mdi:map-marker-distance
+    name: "${euc_name} Mileage total"
+    device_class: distance
+    state_class: measurement
+    unit_of_measurement: "km"
+    accuracy_decimals: 2
+  voltage:
+    id: voltage
+    name: "${euc_name} Voltage"
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 2
+  charging:
+    id: charging
+    name: "${euc_name} Charging"
+    icon: mdi:power-plug-battery
+    device_class: battery_charging
+  battery_percentage:
+    id: battery_percentage
+    name: "${euc_name} Battery"
+    icon: mdi:battery
+    device_class: battery
+    state_class: measurement
+    unit_of_measurement: "%"
+    accuracy_decimals: 2
+  firmware_version:
+    id: firmware_version
+    name: "${euc_name} firmwareVersion"
+    icon: mdi:cellphone-arrow-down
+  low_power_mode:
+    id: low_power_mode
+    name: "${euc_name} Low power mode"
+  high_speed_mode:
+    id: high_speed_mode
+    name: "${euc_name} High speed mode"
+switch:
+  - platform: template
+    name: "BLE connect"
+    id: ble_connect_switch
+    icon: mdi:bluetooth
+    optimistic: true
+    entity_category: "diagnostic"
+    restore_mode: DISABLED
+    on_turn_on:
+      - ble_client.connect: euc
+    on_turn_off:
+      - ble_client.disconnect: euc
