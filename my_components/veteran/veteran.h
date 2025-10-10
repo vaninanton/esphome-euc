@@ -128,8 +128,8 @@ public:
   void binary_sensor_high_speed_mode(binary_sensor::BinarySensor *s) { binary_sensor_high_speed_mode_ = s; }
   void sensor_auto_off(sensor::Sensor *s) { sensor_auto_off_ = s; }
   void sensor_battery_percentage(sensor::Sensor *s) { sensor_battery_percentage_ = s; }
-  void sensor_bms_current_left(sensor::Sensor *s) { sensor_bms_current_left_ = s; }
-  void sensor_bms_current_right(sensor::Sensor *s) { sensor_bms_current_right_ = s; }
+  void sensor_bms_left_current(sensor::Sensor *s) { sensor_bms_left_current_ = s; }
+  void sensor_bms_right_current(sensor::Sensor *s) { sensor_bms_right_current_ = s; }
   void sensor_charging_stop_voltage(sensor::Sensor *s) { sensor_charging_stop_voltage_ = s; }
 
   void sensor_bms_left_cell_01(sensor::Sensor *s) { sensor_bms_left_cell_01_ = s; }
@@ -235,8 +235,8 @@ protected:
   binary_sensor::BinarySensor *binary_sensor_high_speed_mode_;
   sensor::Sensor *sensor_auto_off_;
   sensor::Sensor *sensor_battery_percentage_;
-  sensor::Sensor *sensor_bms_current_left_;
-  sensor::Sensor *sensor_bms_current_right_;
+  sensor::Sensor *sensor_bms_left_current_;
+  sensor::Sensor *sensor_bms_right_current_;
   sensor::Sensor *sensor_charging_stop_voltage_;
 
   sensor::Sensor *sensor_bms_left_cell_01_;

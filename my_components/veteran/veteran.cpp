@@ -275,8 +275,8 @@ void VeteranComponent::parse_packet(const std::vector<uint8_t>& bytes)
     this->binary_sensor_high_speed_mode_->publish_state(this->euc.high_speed_mode);
     this->sensor_auto_off_->publish_state(this->euc.auto_off / 60.0f);
     this->sensor_battery_percentage_->publish_state(this->euc.battery_percentage());
-    this->sensor_bms_current_left_->publish_state(this->euc.bms.left.current);
-    this->sensor_bms_current_right_->publish_state(this->euc.bms.right.current);
+    this->sensor_bms_left_current_->publish_state(this->euc.bms.left.current);
+    this->sensor_bms_right_current_->publish_state(this->euc.bms.right.current);
     this->sensor_charging_stop_voltage_->publish_state(this->euc.charging_stop_voltage / 10.0f);
     this->sensor_temperature_motor_->publish_state(this->euc.temperature_motor);
     this->sensor_temperature_controller_->publish_state(this->euc.temperature_controller);

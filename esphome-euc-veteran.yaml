@@ -120,22 +120,6 @@ veteran:
     state_class: measurement
     unit_of_measurement: "V"
     accuracy_decimals: 2
-  bms_current_left:
-    id: bms_current_left
-    name: "${euc_name} bms current left"
-    icon: mdi:current-ac
-    device_class: current
-    state_class: measurement
-    unit_of_measurement: "A"
-    accuracy_decimals: 2
-  bms_current_right:
-    id: bms_current_right
-    name: "${euc_name} bms current right"
-    icon: mdi:current-ac
-    device_class: current
-    state_class: measurement
-    unit_of_measurement: "A"
-    accuracy_decimals: 2
   temperature_motor:
     id: temperature_motor
     name: "${euc_name} Temperature motor"
@@ -152,6 +136,14 @@ veteran:
     state_class: measurement
     unit_of_measurement: "°C"
     accuracy_decimals: 2
+  bms_left_current:
+    id: bms_left_current
+    name: "${euc_name} BMS Left Current"
+    icon: mdi:current-ac
+    device_class: current
+    state_class: measurement
+    unit_of_measurement: A
+    accuracy_decimals: 3
   bms_left_cell_01:
     id: bms_left_cell_01
     name: "${euc_name} BMS Left Cell01"
@@ -439,6 +431,14 @@ veteran:
     device_class: voltage
     state_class: measurement
     unit_of_measurement: "V"
+    accuracy_decimals: 3
+  bms_right_current:
+    id: bms_right_current
+    name: "${euc_name} BMS Right Current"
+    icon: mdi:current-ac
+    device_class: current
+    state_class: measurement
+    unit_of_measurement: A
     accuracy_decimals: 3
   bms_right_cell_01:
     id: bms_right_cell_01

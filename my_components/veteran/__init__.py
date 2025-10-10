@@ -17,8 +17,8 @@ BINARY_FIELDS = {
 SENSOR_FIELDS = {
     "auto_off": "sensor_auto_off",
     "battery_percentage": "sensor_battery_percentage",
-    "bms_current_left": "sensor_bms_current_left",
-    "bms_current_right": "sensor_bms_current_right",
+    "bms_left_current": "sensor_bms_left_current",
+    "bms_right_current": "sensor_bms_right_current",
     "charging_stop_voltage": "sensor_charging_stop_voltage",
 
     "bms_left_cell_01": "sensor_bms_left_cell_01",
