@@ -61,13 +61,12 @@ ble_client:
       then:
         - lambda: |-
             id(connected).publish_state(true);
-            id(ble_connect_switch).publish_state(true);
             id(status).turn_on().perform();
     on_disconnect:
       then:
         - lambda: |-
             id(connected).publish_state(false);
-            id(ble_connect_switch).publish_state(false);
+            id(veteran_ext).on_ble_disconnected();
             id(status).turn_off().perform();
 button:
   - platform: restart
@@ -118,7 +117,7 @@ veteran:
     device_class: voltage
     state_class: measurement
     unit_of_measurement: V
-    accuracy_decimals: 2
+    accuracy_decimals: 1
   temperature_motor:
     id: temperature_motor
     name: "${euc_name} Temperature motor"
@@ -952,9 +951,8 @@ switch:
     name: "BLE connect"
     id: ble_connect_switch
     icon: mdi:bluetooth
-    optimistic: true
     entity_category: config
-    restore_mode: DISABLED
+    restore_mode: ALWAYS_ON
     on_turn_on:
       - ble_client.connect: euc
     on_turn_off:

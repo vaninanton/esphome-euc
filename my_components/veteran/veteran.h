@@ -74,9 +74,10 @@ struct EUCData
   float mileage_total;   // Общий пробег
   float temperature_controller;
   float temperature_motor;
-  uint16_t auto_off; // Время в секундах до выключения (900 - выключаться не будет)
+  float charging_stop_voltage;
+  float auto_off; // Время в секундах до выключения (900 - выключаться не будет)
+  float voltage;
   uint16_t brightness;
-  uint16_t charging_stop_voltage;
   uint16_t current;
   uint16_t cut_off_angle;
   uint16_t fw;
@@ -90,7 +91,6 @@ struct EUCData
   uint16_t speed_alert;
   uint16_t speed_tiltback;
   uint16_t tho_ra;
-  uint16_t voltage;
 
   float battery_percentage(bool linearType = false) const
   {
@@ -122,6 +122,7 @@ public:
 
   void parse_ble_packet(const std::vector<uint8_t> &x);
   void parse_packet(const std::vector<uint8_t> &bytes);
+  void on_ble_disconnected();
 
   void binary_sensor_charging(binary_sensor::BinarySensor *s) { binary_sensor_charging_ = s; }
   void binary_sensor_low_power_mode(binary_sensor::BinarySensor *s) { binary_sensor_low_power_mode_ = s; }

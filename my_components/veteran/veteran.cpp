@@ -43,13 +43,13 @@ void VeteranComponent::parse_ble_packet(const std::vector<uint8_t>& x)
 
 void VeteranComponent::parse_packet(const std::vector<uint8_t>& bytes)
 {
-    this->euc.voltage = unsignedShortFromBytesBE(bytes, 4);
+    this->euc.voltage = unsignedShortFromBytesBE(bytes, 4) / 100.0f;
     this->euc.speed = shortFromBytesBE(bytes, 6);
     this->euc.mileage_current = unsignedLongFromBytesMidLE(bytes, 8) / 1000.0f;
     this->euc.mileage_total = unsignedLongFromBytesMidLE(bytes, 12) / 1000.0f;
     this->euc.phase_current = shortFromBytesBE(bytes, 16);
     this->euc.temperature_motor = unsignedShortFromBytesBE(bytes, 18) / 100.0f;
-    this->euc.auto_off = unsignedShortFromBytesBE(bytes, 20);
+    this->euc.auto_off = unsignedShortFromBytesBE(bytes, 20) / 60.0f;
     this->euc.charging = bytes[22] == 0x01;
     this->euc.speed_alert = unsignedShortFromBytesBE(bytes, 24);
     this->euc.speed_tiltback = unsignedShortFromBytesBE(bytes, 26);
@@ -63,15 +63,34 @@ void VeteranComponent::parse_packet(const std::vector<uint8_t>& bytes)
     this->euc.pitch_angle = shortFromBytesBE(bytes, 32); // наклон вперед/назад | если около 6248 - стоит на родной подножке
     this->euc.pwm = unsignedShortFromBytesBE(bytes, 34);
 
-    if (this->euc.modelVersion >= 5) {
-        // 5 == lynx
+    this->sensor_voltage_->publish_state(this->euc.voltage);
+    // this->sensor_speed_->publish_state(this->euc.speed);
+    this->sensor_mileage_current_->publish_state(this->euc.mileage_current);
+    this->sensor_mileage_total_->publish_state(this->euc.mileage_total);
+    // this->sensor_phase_current_->publish_state(this->euc.phase_current);
+    this->sensor_temperature_motor_->publish_state(this->euc.temperature_motor);
+    this->sensor_auto_off_->publish_state(this->euc.auto_off);
+    this->binary_sensor_charging_->publish_state(this->euc.charging);
+    // this->sensor_speed_alert_->publish_state(this->euc.speed_alert);
+    // this->sensor_speed_tiltback_->publish_state(this->euc.speed_tiltback);
+    this->text_sensor_firmware_version_->publish_state(this->euc.firmware_version);
 
-        if (bytes[46] == 0x00) { // || bytes[46] == 0x04
+    // Calculated sensors
+    this->sensor_battery_percentage_->publish_state(this->euc.battery_percentage());
+
+    if (this->euc.modelVersion >= 5) {
+        // 5 - Veteran Lynx
+        // 6 - Veteran Sherman L
+
+        if (bytes[46] == 0x00 || bytes[46] == 0x04) {
             // 0 - livedata
-            // Ток: отрицательное значение - заряд, положительное - разряд
             this->euc.temperature_controller = unsignedShortFromBytesBE(bytes, 59) / 100.0f; // Температура, как на экране
             this->euc.bms.left.current = shortFromBytesBE(bytes, 69) / -100.0f; // Ток левой батареи
             this->euc.bms.right.current = shortFromBytesBE(bytes, 71) / -100.0f; // Ток правой батареи
+            
+            this->sensor_bms_left_current_->publish_state(this->euc.bms.left.current);
+            this->sensor_bms_right_current_->publish_state(this->euc.bms.right.current);
+            this->sensor_temperature_controller_->publish_state(this->euc.temperature_controller);
         } else if (bytes[46] == 0x01) {
             this->euc.bms.left.cell01 = unsignedShortFromBytesBE(bytes, 53) / 1000.0f;
             this->euc.bms.left.cell02 = unsignedShortFromBytesBE(bytes, 55) / 1000.0f;
@@ -257,35 +276,118 @@ void VeteranComponent::parse_packet(const std::vector<uint8_t>& bytes)
             this->sensor_bms_right_cell_35_->publish_state(this->euc.bms.right.cell35);
             this->sensor_bms_right_cell_36_->publish_state(this->euc.bms.right.cell36);
         } else if (bytes[46] == 0x08) {
-            // ESP_LOGI("PG8", "%s", format_hex_pretty(bytes, ' ', false).c_str());
-
-            // this->euc.gyro_level = unsignedShortFromBytesBE(bytes, 51); 
+            // this->euc.gyro_level = unsignedShortFromBytesBE(bytes, 51);
             // this->euc.brightness = unsignedShortFromBytesBE(bytes, 55);
             this->euc.low_power_mode = bytes[60] == 0x01;
             this->euc.high_speed_mode = bytes[61] == 0x01;
             this->euc.cut_off_angle = bytes[62];
             this->euc.tho_ra = bytes[66];
-            // cra_lu ???
-            this->euc.charging_stop_voltage = unsignedShortFromBytesBE(bytes, 63) + 682;
+            // this->euc.cra_lu = bytes[??];
+            this->euc.charging_stop_voltage = (unsignedShortFromBytesBE(bytes, 63) + 682) / 10.0f;
+
+            this->binary_sensor_low_power_mode_->publish_state(this->euc.low_power_mode);
+            this->binary_sensor_high_speed_mode_->publish_state(this->euc.high_speed_mode);
+            // this->sensor_cut_off_angle_->publish_state(this->euc.cut_off_angle);            
+            this->sensor_tho_ra_->publish_state(this->euc.tho_ra);            
+            // this->sensor_cra_lu_->publish_state(this->euc.cra_lu);            
+            this->sensor_charging_stop_voltage_->publish_state(this->euc.charging_stop_voltage);
         }
     }
-
-    this->binary_sensor_charging_->publish_state(this->euc.charging);
-    this->binary_sensor_low_power_mode_->publish_state(this->euc.low_power_mode);
-    this->binary_sensor_high_speed_mode_->publish_state(this->euc.high_speed_mode);
-    this->sensor_auto_off_->publish_state(this->euc.auto_off / 60.0f);
-    this->sensor_battery_percentage_->publish_state(this->euc.battery_percentage());
-    this->sensor_bms_left_current_->publish_state(this->euc.bms.left.current);
-    this->sensor_bms_right_current_->publish_state(this->euc.bms.right.current);
-    this->sensor_charging_stop_voltage_->publish_state(this->euc.charging_stop_voltage / 10.0f);
-    this->sensor_temperature_motor_->publish_state(this->euc.temperature_motor);
-    this->sensor_temperature_controller_->publish_state(this->euc.temperature_controller);
-    this->sensor_tho_ra_->publish_state(this->euc.tho_ra);
-    this->sensor_mileage_current_->publish_state(this->euc.mileage_current); //  / 1000.0f
-    this->sensor_mileage_total_->publish_state(this->euc.mileage_total); //  / 1000.0f
-    this->sensor_voltage_->publish_state(this->euc.voltage / 100.0f);
-    this->text_sensor_firmware_version_->publish_state(this->euc.firmware_version);
 }
 
+void VeteranComponent::on_ble_disconnected()
+{
+    this->binary_sensor_charging_->publish_state(false);
+    this->sensor_auto_off_->publish_state(NAN);
+    this->sensor_bms_left_current_->publish_state(NAN);
+    this->sensor_bms_right_current_->publish_state(NAN);
+    this->sensor_temperature_controller_->publish_state(NAN);
+    this->sensor_temperature_motor_->publish_state(NAN);
+    this->sensor_voltage_->publish_state(NAN);
+    this->sensor_bms_left_cell_01_->publish_state(NAN);
+    this->sensor_bms_left_cell_02_->publish_state(NAN);
+    this->sensor_bms_left_cell_03_->publish_state(NAN);
+    this->sensor_bms_left_cell_04_->publish_state(NAN);
+    this->sensor_bms_left_cell_05_->publish_state(NAN);
+    this->sensor_bms_left_cell_06_->publish_state(NAN);
+    this->sensor_bms_left_cell_07_->publish_state(NAN);
+    this->sensor_bms_left_cell_08_->publish_state(NAN);
+    this->sensor_bms_left_cell_09_->publish_state(NAN);
+    this->sensor_bms_left_cell_10_->publish_state(NAN);
+    this->sensor_bms_left_cell_11_->publish_state(NAN);
+    this->sensor_bms_left_cell_12_->publish_state(NAN);
+    this->sensor_bms_left_cell_13_->publish_state(NAN);
+    this->sensor_bms_left_cell_14_->publish_state(NAN);
+    this->sensor_bms_left_cell_15_->publish_state(NAN);
+    this->sensor_bms_left_cell_16_->publish_state(NAN);
+    this->sensor_bms_left_cell_17_->publish_state(NAN);
+    this->sensor_bms_left_cell_18_->publish_state(NAN);
+    this->sensor_bms_left_cell_19_->publish_state(NAN);
+    this->sensor_bms_left_cell_20_->publish_state(NAN);
+    this->sensor_bms_left_cell_21_->publish_state(NAN);
+    this->sensor_bms_left_cell_22_->publish_state(NAN);
+    this->sensor_bms_left_cell_23_->publish_state(NAN);
+    this->sensor_bms_left_cell_24_->publish_state(NAN);
+    this->sensor_bms_left_cell_25_->publish_state(NAN);
+    this->sensor_bms_left_cell_26_->publish_state(NAN);
+    this->sensor_bms_left_cell_27_->publish_state(NAN);
+    this->sensor_bms_left_cell_28_->publish_state(NAN);
+    this->sensor_bms_left_cell_29_->publish_state(NAN);
+    this->sensor_bms_left_cell_30_->publish_state(NAN);
+    this->sensor_bms_left_cell_31_->publish_state(NAN);
+    this->sensor_bms_left_cell_32_->publish_state(NAN);
+    this->sensor_bms_left_cell_33_->publish_state(NAN);
+    this->sensor_bms_left_cell_34_->publish_state(NAN);
+    this->sensor_bms_left_cell_35_->publish_state(NAN);
+    this->sensor_bms_left_cell_36_->publish_state(NAN);
+    this->sensor_bms_left_temp_1_->publish_state(NAN);
+    this->sensor_bms_left_temp_2_->publish_state(NAN);
+    this->sensor_bms_left_temp_3_->publish_state(NAN);
+    this->sensor_bms_left_temp_4_->publish_state(NAN);
+    this->sensor_bms_left_temp_5_->publish_state(NAN);
+    this->sensor_bms_left_temp_6_->publish_state(NAN);
+    this->sensor_bms_right_cell_01_->publish_state(NAN);
+    this->sensor_bms_right_cell_02_->publish_state(NAN);
+    this->sensor_bms_right_cell_03_->publish_state(NAN);
+    this->sensor_bms_right_cell_04_->publish_state(NAN);
+    this->sensor_bms_right_cell_05_->publish_state(NAN);
+    this->sensor_bms_right_cell_06_->publish_state(NAN);
+    this->sensor_bms_right_cell_07_->publish_state(NAN);
+    this->sensor_bms_right_cell_08_->publish_state(NAN);
+    this->sensor_bms_right_cell_09_->publish_state(NAN);
+    this->sensor_bms_right_cell_10_->publish_state(NAN);
+    this->sensor_bms_right_cell_11_->publish_state(NAN);
+    this->sensor_bms_right_cell_12_->publish_state(NAN);
+    this->sensor_bms_right_cell_13_->publish_state(NAN);
+    this->sensor_bms_right_cell_14_->publish_state(NAN);
+    this->sensor_bms_right_cell_15_->publish_state(NAN);
+    this->sensor_bms_right_cell_16_->publish_state(NAN);
+    this->sensor_bms_right_cell_17_->publish_state(NAN);
+    this->sensor_bms_right_cell_18_->publish_state(NAN);
+    this->sensor_bms_right_cell_19_->publish_state(NAN);
+    this->sensor_bms_right_cell_20_->publish_state(NAN);
+    this->sensor_bms_right_cell_21_->publish_state(NAN);
+    this->sensor_bms_right_cell_22_->publish_state(NAN);
+    this->sensor_bms_right_cell_23_->publish_state(NAN);
+    this->sensor_bms_right_cell_24_->publish_state(NAN);
+    this->sensor_bms_right_cell_25_->publish_state(NAN);
+    this->sensor_bms_right_cell_26_->publish_state(NAN);
+    this->sensor_bms_right_cell_27_->publish_state(NAN);
+    this->sensor_bms_right_cell_28_->publish_state(NAN);
+    this->sensor_bms_right_cell_29_->publish_state(NAN);
+    this->sensor_bms_right_cell_30_->publish_state(NAN);
+    this->sensor_bms_right_cell_31_->publish_state(NAN);
+    this->sensor_bms_right_cell_32_->publish_state(NAN);
+    this->sensor_bms_right_cell_33_->publish_state(NAN);
+    this->sensor_bms_right_cell_34_->publish_state(NAN);
+    this->sensor_bms_right_cell_35_->publish_state(NAN);
+    this->sensor_bms_right_cell_36_->publish_state(NAN);
+    this->sensor_bms_right_temp_1_->publish_state(NAN);
+    this->sensor_bms_right_temp_2_->publish_state(NAN);
+    this->sensor_bms_right_temp_3_->publish_state(NAN);
+    this->sensor_bms_right_temp_4_->publish_state(NAN);
+    this->sensor_bms_right_temp_5_->publish_state(NAN);
+    this->sensor_bms_right_temp_6_->publish_state(NAN);
+}
 } // namespace veteran
 } // namespace esphome
