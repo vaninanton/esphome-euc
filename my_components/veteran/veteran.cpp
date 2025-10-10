@@ -287,5 +287,5 @@ void VeteranComponent::parse_packet(const std::vector<uint8_t>& bytes)
     this->text_sensor_firmware_version_->publish_state(this->euc.firmware_version);
 }
 
-} // namespace empty_compound_sensor
+} // namespace veteran
 } // namespace esphome
