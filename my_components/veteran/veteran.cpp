@@ -43,13 +43,13 @@ void VeteranComponent::parse_ble_packet(const std::vector<uint8_t>& x)
 
 void VeteranComponent::parse_packet(const std::vector<uint8_t>& bytes)
 {
-    this->euc.voltage = unsignedShortFromBytesBE(bytes, 4) / 100.0f;
+    this->euc.voltage = unsignedShortFromBytesBE(bytes, 4);
     this->euc.speed = shortFromBytesBE(bytes, 6);
     this->euc.mileage_current = unsignedLongFromBytesMidLE(bytes, 8) / 1000.0f;
     this->euc.mileage_total = unsignedLongFromBytesMidLE(bytes, 12) / 1000.0f;
     this->euc.phase_current = shortFromBytesBE(bytes, 16);
     this->euc.temperature_motor = unsignedShortFromBytesBE(bytes, 18) / 100.0f;
-    this->euc.auto_off = unsignedShortFromBytesBE(bytes, 20) / 60.0f;
+    this->euc.auto_off = unsignedShortFromBytesBE(bytes, 20);
     this->euc.charging = bytes[22] == 0x01;
     this->euc.speed_alert = unsignedShortFromBytesBE(bytes, 24);
     this->euc.speed_tiltback = unsignedShortFromBytesBE(bytes, 26);
@@ -63,13 +63,13 @@ void VeteranComponent::parse_packet(const std::vector<uint8_t>& bytes)
     this->euc.pitch_angle = shortFromBytesBE(bytes, 32); // наклон вперед/назад | если около 6248 - стоит на родной подножке
     this->euc.pwm = unsignedShortFromBytesBE(bytes, 34);
 
-    this->sensor_voltage_->publish_state(this->euc.voltage);
+    this->sensor_voltage_->publish_state(this->euc.voltage / 100.0f);
     // this->sensor_speed_->publish_state(this->euc.speed);
     this->sensor_mileage_current_->publish_state(this->euc.mileage_current);
     this->sensor_mileage_total_->publish_state(this->euc.mileage_total);
     // this->sensor_phase_current_->publish_state(this->euc.phase_current);
     this->sensor_temperature_motor_->publish_state(this->euc.temperature_motor);
-    this->sensor_auto_off_->publish_state(this->euc.auto_off);
+    this->sensor_auto_off_->publish_state(this->euc.auto_off / 60.0f);
     this->binary_sensor_charging_->publish_state(this->euc.charging);
     // this->sensor_speed_alert_->publish_state(this->euc.speed_alert);
     // this->sensor_speed_tiltback_->publish_state(this->euc.speed_tiltback);
@@ -84,10 +84,11 @@ void VeteranComponent::parse_packet(const std::vector<uint8_t>& bytes)
 
         if (bytes[46] == 0x00 || bytes[46] == 0x04) {
             // 0 - livedata
+            // Ток: отрицательное значение - заряд, положительное - разряд
             this->euc.temperature_controller = unsignedShortFromBytesBE(bytes, 59) / 100.0f; // Температура, как на экране
             this->euc.bms.left.current = shortFromBytesBE(bytes, 69) / -100.0f; // Ток левой батареи
             this->euc.bms.right.current = shortFromBytesBE(bytes, 71) / -100.0f; // Ток правой батареи
-            
+
             this->sensor_bms_left_current_->publish_state(this->euc.bms.left.current);
             this->sensor_bms_right_current_->publish_state(this->euc.bms.right.current);
             this->sensor_temperature_controller_->publish_state(this->euc.temperature_controller);
@@ -283,14 +284,14 @@ void VeteranComponent::parse_packet(const std::vector<uint8_t>& bytes)
             this->euc.cut_off_angle = bytes[62];
             this->euc.tho_ra = bytes[66];
             // this->euc.cra_lu = bytes[??];
-            this->euc.charging_stop_voltage = (unsignedShortFromBytesBE(bytes, 63) + 682) / 10.0f;
+            this->euc.charging_stop_voltage = unsignedShortFromBytesBE(bytes, 63) + 682;
 
             this->binary_sensor_low_power_mode_->publish_state(this->euc.low_power_mode);
             this->binary_sensor_high_speed_mode_->publish_state(this->euc.high_speed_mode);
-            // this->sensor_cut_off_angle_->publish_state(this->euc.cut_off_angle);            
-            this->sensor_tho_ra_->publish_state(this->euc.tho_ra);            
-            // this->sensor_cra_lu_->publish_state(this->euc.cra_lu);            
-            this->sensor_charging_stop_voltage_->publish_state(this->euc.charging_stop_voltage);
+            // this->sensor_cut_off_angle_->publish_state(this->euc.cut_off_angle);
+            this->sensor_tho_ra_->publish_state(this->euc.tho_ra);
+            // this->sensor_cra_lu_->publish_state(this->euc.cra_lu);
+            this->sensor_charging_stop_voltage_->publish_state(this->euc.charging_stop_voltage / 10.0f);
         }
     }
 }

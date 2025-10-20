@@ -74,10 +74,9 @@ struct EUCData
   float mileage_total;   // Общий пробег
   float temperature_controller;
   float temperature_motor;
-  float charging_stop_voltage;
-  float auto_off; // Время в секундах до выключения (900 - выключаться не будет)
-  float voltage;
+  uint16_t auto_off; // Время в секундах до выключения (900 - выключаться не будет)
   uint16_t brightness;
+  uint16_t charging_stop_voltage;
   uint16_t current;
   uint16_t cut_off_angle;
   uint16_t fw;
@@ -91,6 +90,7 @@ struct EUCData
   uint16_t speed_alert;
   uint16_t speed_tiltback;
   uint16_t tho_ra;
+  uint16_t voltage;
 
   float battery_percentage(bool linearType = false) const
   {

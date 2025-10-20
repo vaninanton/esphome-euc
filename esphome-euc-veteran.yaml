@@ -66,12 +66,11 @@ ble_client:
       then:
         - lambda: |-
             id(connected).publish_state(false);
-            id(veteran_ext).on_ble_disconnected();
             id(status).turn_off().perform();
 button:
   - platform: restart
     name: "Restart ESP32"
-    entity_category: config
+    entity_category: diagnostic
 sensor:
   - platform: ble_client
     id: states
@@ -98,6 +97,7 @@ binary_sensor:
       mode: INPUT_PULLUP
     name: "Boot Button"
     internal: true
+    entity_category: diagnostic
     on_press:
       - switch.toggle: ble_connect_switch
 veteran:
