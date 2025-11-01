@@ -69,7 +69,11 @@ void VeteranComponent::parse_packet(const std::vector<uint8_t>& bytes)
     this->sensor_mileage_total_->publish_state(this->euc.mileage_total);
     // this->sensor_phase_current_->publish_state(this->euc.phase_current);
     this->sensor_temperature_motor_->publish_state(this->euc.temperature_motor);
-    this->sensor_auto_off_->publish_state(this->euc.auto_off / 60.0f);
+    if (this->euc.auto_off < 900) {
+        this->sensor_auto_off_->publish_state(this->euc.auto_off);
+    } else {
+        this->sensor_auto_off_->publish_state(NAN);
+    }
     this->binary_sensor_charging_->publish_state(this->euc.charging);
     // this->sensor_speed_alert_->publish_state(this->euc.speed_alert);
     // this->sensor_speed_tiltback_->publish_state(this->euc.speed_tiltback);
@@ -91,6 +95,7 @@ void VeteranComponent::parse_packet(const std::vector<uint8_t>& bytes)
 
             this->sensor_bms_left_current_->publish_state(this->euc.bms.left.current);
             this->sensor_bms_right_current_->publish_state(this->euc.bms.right.current);
+            this->sensor_power_->publish_state(this->euc.voltage * (this->euc.bms.left.current + this->euc.bms.right.current) / 100.0f);
             this->sensor_temperature_controller_->publish_state(this->euc.temperature_controller);
         } else if (bytes[46] == 0x01) {
             this->euc.bms.left.cell01 = unsignedShortFromBytesBE(bytes, 53) / 1000.0f;
@@ -109,21 +114,21 @@ void VeteranComponent::parse_packet(const std::vector<uint8_t>& bytes)
             this->euc.bms.left.cell14 = unsignedShortFromBytesBE(bytes, 79) / 1000.0f;
             this->euc.bms.left.cell15 = unsignedShortFromBytesBE(bytes, 81) / 1000.0f;
 
-            this->sensor_bms_left_cell_01_->publish_state(this->euc.bms.left.cell01);
-            this->sensor_bms_left_cell_02_->publish_state(this->euc.bms.left.cell02);
-            this->sensor_bms_left_cell_03_->publish_state(this->euc.bms.left.cell03);
-            this->sensor_bms_left_cell_04_->publish_state(this->euc.bms.left.cell04);
-            this->sensor_bms_left_cell_05_->publish_state(this->euc.bms.left.cell05);
-            this->sensor_bms_left_cell_06_->publish_state(this->euc.bms.left.cell06);
-            this->sensor_bms_left_cell_07_->publish_state(this->euc.bms.left.cell07);
-            this->sensor_bms_left_cell_08_->publish_state(this->euc.bms.left.cell08);
-            this->sensor_bms_left_cell_09_->publish_state(this->euc.bms.left.cell09);
-            this->sensor_bms_left_cell_10_->publish_state(this->euc.bms.left.cell10);
-            this->sensor_bms_left_cell_11_->publish_state(this->euc.bms.left.cell11);
-            this->sensor_bms_left_cell_12_->publish_state(this->euc.bms.left.cell12);
-            this->sensor_bms_left_cell_13_->publish_state(this->euc.bms.left.cell13);
-            this->sensor_bms_left_cell_14_->publish_state(this->euc.bms.left.cell14);
-            this->sensor_bms_left_cell_15_->publish_state(this->euc.bms.left.cell15);
+            // this->sensor_bms_left_cell_01_->publish_state(this->euc.bms.left.cell01);
+            // this->sensor_bms_left_cell_02_->publish_state(this->euc.bms.left.cell02);
+            // this->sensor_bms_left_cell_03_->publish_state(this->euc.bms.left.cell03);
+            // this->sensor_bms_left_cell_04_->publish_state(this->euc.bms.left.cell04);
+            // this->sensor_bms_left_cell_05_->publish_state(this->euc.bms.left.cell05);
+            // this->sensor_bms_left_cell_06_->publish_state(this->euc.bms.left.cell06);
+            // this->sensor_bms_left_cell_07_->publish_state(this->euc.bms.left.cell07);
+            // this->sensor_bms_left_cell_08_->publish_state(this->euc.bms.left.cell08);
+            // this->sensor_bms_left_cell_09_->publish_state(this->euc.bms.left.cell09);
+            // this->sensor_bms_left_cell_10_->publish_state(this->euc.bms.left.cell10);
+            // this->sensor_bms_left_cell_11_->publish_state(this->euc.bms.left.cell11);
+            // this->sensor_bms_left_cell_12_->publish_state(this->euc.bms.left.cell12);
+            // this->sensor_bms_left_cell_13_->publish_state(this->euc.bms.left.cell13);
+            // this->sensor_bms_left_cell_14_->publish_state(this->euc.bms.left.cell14);
+            // this->sensor_bms_left_cell_15_->publish_state(this->euc.bms.left.cell15);
         } else if (bytes[46] == 0x02) {
             this->euc.bms.left.cell16 = unsignedShortFromBytesBE(bytes, 53) / 1000.0f;
             this->euc.bms.left.cell17 = unsignedShortFromBytesBE(bytes, 55) / 1000.0f;
@@ -141,21 +146,21 @@ void VeteranComponent::parse_packet(const std::vector<uint8_t>& bytes)
             this->euc.bms.left.cell29 = unsignedShortFromBytesBE(bytes, 79) / 1000.0f;
             this->euc.bms.left.cell30 = unsignedShortFromBytesBE(bytes, 81) / 1000.0f;
 
-            this->sensor_bms_left_cell_16_->publish_state(this->euc.bms.left.cell16);
-            this->sensor_bms_left_cell_17_->publish_state(this->euc.bms.left.cell17);
-            this->sensor_bms_left_cell_18_->publish_state(this->euc.bms.left.cell18);
-            this->sensor_bms_left_cell_19_->publish_state(this->euc.bms.left.cell19);
-            this->sensor_bms_left_cell_20_->publish_state(this->euc.bms.left.cell20);
-            this->sensor_bms_left_cell_21_->publish_state(this->euc.bms.left.cell21);
-            this->sensor_bms_left_cell_22_->publish_state(this->euc.bms.left.cell22);
-            this->sensor_bms_left_cell_23_->publish_state(this->euc.bms.left.cell23);
-            this->sensor_bms_left_cell_24_->publish_state(this->euc.bms.left.cell24);
-            this->sensor_bms_left_cell_25_->publish_state(this->euc.bms.left.cell25);
-            this->sensor_bms_left_cell_26_->publish_state(this->euc.bms.left.cell26);
-            this->sensor_bms_left_cell_27_->publish_state(this->euc.bms.left.cell27);
-            this->sensor_bms_left_cell_28_->publish_state(this->euc.bms.left.cell28);
-            this->sensor_bms_left_cell_29_->publish_state(this->euc.bms.left.cell29);
-            this->sensor_bms_left_cell_30_->publish_state(this->euc.bms.left.cell30);
+            // this->sensor_bms_left_cell_16_->publish_state(this->euc.bms.left.cell16);
+            // this->sensor_bms_left_cell_17_->publish_state(this->euc.bms.left.cell17);
+            // this->sensor_bms_left_cell_18_->publish_state(this->euc.bms.left.cell18);
+            // this->sensor_bms_left_cell_19_->publish_state(this->euc.bms.left.cell19);
+            // this->sensor_bms_left_cell_20_->publish_state(this->euc.bms.left.cell20);
+            // this->sensor_bms_left_cell_21_->publish_state(this->euc.bms.left.cell21);
+            // this->sensor_bms_left_cell_22_->publish_state(this->euc.bms.left.cell22);
+            // this->sensor_bms_left_cell_23_->publish_state(this->euc.bms.left.cell23);
+            // this->sensor_bms_left_cell_24_->publish_state(this->euc.bms.left.cell24);
+            // this->sensor_bms_left_cell_25_->publish_state(this->euc.bms.left.cell25);
+            // this->sensor_bms_left_cell_26_->publish_state(this->euc.bms.left.cell26);
+            // this->sensor_bms_left_cell_27_->publish_state(this->euc.bms.left.cell27);
+            // this->sensor_bms_left_cell_28_->publish_state(this->euc.bms.left.cell28);
+            // this->sensor_bms_left_cell_29_->publish_state(this->euc.bms.left.cell29);
+            // this->sensor_bms_left_cell_30_->publish_state(this->euc.bms.left.cell30);
         } else if (bytes[46] == 0x03) {
             this->euc.bms.left.temp1  = unsignedShortFromBytesBE(bytes, 47) / 100.0f;
             this->euc.bms.left.temp2  = unsignedShortFromBytesBE(bytes, 49) / 100.0f;
@@ -178,12 +183,12 @@ void VeteranComponent::parse_packet(const std::vector<uint8_t>& bytes)
             this->sensor_bms_left_temp_5_->publish_state(this->euc.bms.left.temp5);
             this->sensor_bms_left_temp_6_->publish_state(this->euc.bms.left.temp6);
             
-            this->sensor_bms_left_cell_31_->publish_state(this->euc.bms.left.cell31);
-            this->sensor_bms_left_cell_32_->publish_state(this->euc.bms.left.cell32);
-            this->sensor_bms_left_cell_33_->publish_state(this->euc.bms.left.cell33);
-            this->sensor_bms_left_cell_34_->publish_state(this->euc.bms.left.cell34);
-            this->sensor_bms_left_cell_35_->publish_state(this->euc.bms.left.cell35);
-            this->sensor_bms_left_cell_36_->publish_state(this->euc.bms.left.cell36);
+            // this->sensor_bms_left_cell_31_->publish_state(this->euc.bms.left.cell31);
+            // this->sensor_bms_left_cell_32_->publish_state(this->euc.bms.left.cell32);
+            // this->sensor_bms_left_cell_33_->publish_state(this->euc.bms.left.cell33);
+            // this->sensor_bms_left_cell_34_->publish_state(this->euc.bms.left.cell34);
+            // this->sensor_bms_left_cell_35_->publish_state(this->euc.bms.left.cell35);
+            // this->sensor_bms_left_cell_36_->publish_state(this->euc.bms.left.cell36);
         } else if (bytes[46] == 0x05) {
             this->euc.bms.right.cell01 = unsignedShortFromBytesBE(bytes, 53) / 1000.0f;
             this->euc.bms.right.cell02 = unsignedShortFromBytesBE(bytes, 55) / 1000.0f;
@@ -201,21 +206,21 @@ void VeteranComponent::parse_packet(const std::vector<uint8_t>& bytes)
             this->euc.bms.right.cell14 = unsignedShortFromBytesBE(bytes, 79) / 1000.0f;
             this->euc.bms.right.cell15 = unsignedShortFromBytesBE(bytes, 81) / 1000.0f;
 
-            this->sensor_bms_right_cell_01_->publish_state(this->euc.bms.right.cell01);
-            this->sensor_bms_right_cell_02_->publish_state(this->euc.bms.right.cell02);
-            this->sensor_bms_right_cell_03_->publish_state(this->euc.bms.right.cell03);
-            this->sensor_bms_right_cell_04_->publish_state(this->euc.bms.right.cell04);
-            this->sensor_bms_right_cell_05_->publish_state(this->euc.bms.right.cell05);
-            this->sensor_bms_right_cell_06_->publish_state(this->euc.bms.right.cell06);
-            this->sensor_bms_right_cell_07_->publish_state(this->euc.bms.right.cell07);
-            this->sensor_bms_right_cell_08_->publish_state(this->euc.bms.right.cell08);
-            this->sensor_bms_right_cell_09_->publish_state(this->euc.bms.right.cell09);
-            this->sensor_bms_right_cell_10_->publish_state(this->euc.bms.right.cell10);
-            this->sensor_bms_right_cell_11_->publish_state(this->euc.bms.right.cell11);
-            this->sensor_bms_right_cell_12_->publish_state(this->euc.bms.right.cell12);
-            this->sensor_bms_right_cell_13_->publish_state(this->euc.bms.right.cell13);
-            this->sensor_bms_right_cell_14_->publish_state(this->euc.bms.right.cell14);
-            this->sensor_bms_right_cell_15_->publish_state(this->euc.bms.right.cell15);
+            // this->sensor_bms_right_cell_01_->publish_state(this->euc.bms.right.cell01);
+            // this->sensor_bms_right_cell_02_->publish_state(this->euc.bms.right.cell02);
+            // this->sensor_bms_right_cell_03_->publish_state(this->euc.bms.right.cell03);
+            // this->sensor_bms_right_cell_04_->publish_state(this->euc.bms.right.cell04);
+            // this->sensor_bms_right_cell_05_->publish_state(this->euc.bms.right.cell05);
+            // this->sensor_bms_right_cell_06_->publish_state(this->euc.bms.right.cell06);
+            // this->sensor_bms_right_cell_07_->publish_state(this->euc.bms.right.cell07);
+            // this->sensor_bms_right_cell_08_->publish_state(this->euc.bms.right.cell08);
+            // this->sensor_bms_right_cell_09_->publish_state(this->euc.bms.right.cell09);
+            // this->sensor_bms_right_cell_10_->publish_state(this->euc.bms.right.cell10);
+            // this->sensor_bms_right_cell_11_->publish_state(this->euc.bms.right.cell11);
+            // this->sensor_bms_right_cell_12_->publish_state(this->euc.bms.right.cell12);
+            // this->sensor_bms_right_cell_13_->publish_state(this->euc.bms.right.cell13);
+            // this->sensor_bms_right_cell_14_->publish_state(this->euc.bms.right.cell14);
+            // this->sensor_bms_right_cell_15_->publish_state(this->euc.bms.right.cell15);
         } else if (bytes[46] == 0x06) {
             this->euc.bms.right.cell16 = unsignedShortFromBytesBE(bytes, 53) / 1000.0f;
             this->euc.bms.right.cell17 = unsignedShortFromBytesBE(bytes, 55) / 1000.0f;
@@ -233,21 +238,21 @@ void VeteranComponent::parse_packet(const std::vector<uint8_t>& bytes)
             this->euc.bms.right.cell29 = unsignedShortFromBytesBE(bytes, 79) / 1000.0f;
             this->euc.bms.right.cell30 = unsignedShortFromBytesBE(bytes, 81) / 1000.0f;
 
-            this->sensor_bms_right_cell_16_->publish_state(this->euc.bms.right.cell16);
-            this->sensor_bms_right_cell_17_->publish_state(this->euc.bms.right.cell17);
-            this->sensor_bms_right_cell_18_->publish_state(this->euc.bms.right.cell18);
-            this->sensor_bms_right_cell_19_->publish_state(this->euc.bms.right.cell19);
-            this->sensor_bms_right_cell_20_->publish_state(this->euc.bms.right.cell20);
-            this->sensor_bms_right_cell_21_->publish_state(this->euc.bms.right.cell21);
-            this->sensor_bms_right_cell_22_->publish_state(this->euc.bms.right.cell22);
-            this->sensor_bms_right_cell_23_->publish_state(this->euc.bms.right.cell23);
-            this->sensor_bms_right_cell_24_->publish_state(this->euc.bms.right.cell24);
-            this->sensor_bms_right_cell_25_->publish_state(this->euc.bms.right.cell25);
-            this->sensor_bms_right_cell_26_->publish_state(this->euc.bms.right.cell26);
-            this->sensor_bms_right_cell_27_->publish_state(this->euc.bms.right.cell27);
-            this->sensor_bms_right_cell_28_->publish_state(this->euc.bms.right.cell28);
-            this->sensor_bms_right_cell_29_->publish_state(this->euc.bms.right.cell29);
-            this->sensor_bms_right_cell_30_->publish_state(this->euc.bms.right.cell30);
+            // this->sensor_bms_right_cell_16_->publish_state(this->euc.bms.right.cell16);
+            // this->sensor_bms_right_cell_17_->publish_state(this->euc.bms.right.cell17);
+            // this->sensor_bms_right_cell_18_->publish_state(this->euc.bms.right.cell18);
+            // this->sensor_bms_right_cell_19_->publish_state(this->euc.bms.right.cell19);
+            // this->sensor_bms_right_cell_20_->publish_state(this->euc.bms.right.cell20);
+            // this->sensor_bms_right_cell_21_->publish_state(this->euc.bms.right.cell21);
+            // this->sensor_bms_right_cell_22_->publish_state(this->euc.bms.right.cell22);
+            // this->sensor_bms_right_cell_23_->publish_state(this->euc.bms.right.cell23);
+            // this->sensor_bms_right_cell_24_->publish_state(this->euc.bms.right.cell24);
+            // this->sensor_bms_right_cell_25_->publish_state(this->euc.bms.right.cell25);
+            // this->sensor_bms_right_cell_26_->publish_state(this->euc.bms.right.cell26);
+            // this->sensor_bms_right_cell_27_->publish_state(this->euc.bms.right.cell27);
+            // this->sensor_bms_right_cell_28_->publish_state(this->euc.bms.right.cell28);
+            // this->sensor_bms_right_cell_29_->publish_state(this->euc.bms.right.cell29);
+            // this->sensor_bms_right_cell_30_->publish_state(this->euc.bms.right.cell30);
         } else if (bytes[46] == 0x07) {
             this->euc.bms.right.temp1  = unsignedShortFromBytesBE(bytes, 47) / 100.0f;
             this->euc.bms.right.temp2  = unsignedShortFromBytesBE(bytes, 49) / 100.0f;
@@ -270,12 +275,12 @@ void VeteranComponent::parse_packet(const std::vector<uint8_t>& bytes)
             this->sensor_bms_right_temp_5_->publish_state(this->euc.bms.right.temp5);
             this->sensor_bms_right_temp_6_->publish_state(this->euc.bms.right.temp6);
             
-            this->sensor_bms_right_cell_31_->publish_state(this->euc.bms.right.cell31);
-            this->sensor_bms_right_cell_32_->publish_state(this->euc.bms.right.cell32);
-            this->sensor_bms_right_cell_33_->publish_state(this->euc.bms.right.cell33);
-            this->sensor_bms_right_cell_34_->publish_state(this->euc.bms.right.cell34);
-            this->sensor_bms_right_cell_35_->publish_state(this->euc.bms.right.cell35);
-            this->sensor_bms_right_cell_36_->publish_state(this->euc.bms.right.cell36);
+            // this->sensor_bms_right_cell_31_->publish_state(this->euc.bms.right.cell31);
+            // this->sensor_bms_right_cell_32_->publish_state(this->euc.bms.right.cell32);
+            // this->sensor_bms_right_cell_33_->publish_state(this->euc.bms.right.cell33);
+            // this->sensor_bms_right_cell_34_->publish_state(this->euc.bms.right.cell34);
+            // this->sensor_bms_right_cell_35_->publish_state(this->euc.bms.right.cell35);
+            // this->sensor_bms_right_cell_36_->publish_state(this->euc.bms.right.cell36);
         } else if (bytes[46] == 0x08) {
             // this->euc.gyro_level = unsignedShortFromBytesBE(bytes, 51);
             // this->euc.brightness = unsignedShortFromBytesBE(bytes, 55);
@@ -296,99 +301,5 @@ void VeteranComponent::parse_packet(const std::vector<uint8_t>& bytes)
     }
 }
 
-void VeteranComponent::on_ble_disconnected()
-{
-    this->binary_sensor_charging_->publish_state(false);
-    this->sensor_auto_off_->publish_state(NAN);
-    this->sensor_bms_left_current_->publish_state(NAN);
-    this->sensor_bms_right_current_->publish_state(NAN);
-    this->sensor_temperature_controller_->publish_state(NAN);
-    this->sensor_temperature_motor_->publish_state(NAN);
-    this->sensor_voltage_->publish_state(NAN);
-    this->sensor_bms_left_cell_01_->publish_state(NAN);
-    this->sensor_bms_left_cell_02_->publish_state(NAN);
-    this->sensor_bms_left_cell_03_->publish_state(NAN);
-    this->sensor_bms_left_cell_04_->publish_state(NAN);
-    this->sensor_bms_left_cell_05_->publish_state(NAN);
-    this->sensor_bms_left_cell_06_->publish_state(NAN);
-    this->sensor_bms_left_cell_07_->publish_state(NAN);
-    this->sensor_bms_left_cell_08_->publish_state(NAN);
-    this->sensor_bms_left_cell_09_->publish_state(NAN);
-    this->sensor_bms_left_cell_10_->publish_state(NAN);
-    this->sensor_bms_left_cell_11_->publish_state(NAN);
-    this->sensor_bms_left_cell_12_->publish_state(NAN);
-    this->sensor_bms_left_cell_13_->publish_state(NAN);
-    this->sensor_bms_left_cell_14_->publish_state(NAN);
-    this->sensor_bms_left_cell_15_->publish_state(NAN);
-    this->sensor_bms_left_cell_16_->publish_state(NAN);
-    this->sensor_bms_left_cell_17_->publish_state(NAN);
-    this->sensor_bms_left_cell_18_->publish_state(NAN);
-    this->sensor_bms_left_cell_19_->publish_state(NAN);
-    this->sensor_bms_left_cell_20_->publish_state(NAN);
-    this->sensor_bms_left_cell_21_->publish_state(NAN);
-    this->sensor_bms_left_cell_22_->publish_state(NAN);
-    this->sensor_bms_left_cell_23_->publish_state(NAN);
-    this->sensor_bms_left_cell_24_->publish_state(NAN);
-    this->sensor_bms_left_cell_25_->publish_state(NAN);
-    this->sensor_bms_left_cell_26_->publish_state(NAN);
-    this->sensor_bms_left_cell_27_->publish_state(NAN);
-    this->sensor_bms_left_cell_28_->publish_state(NAN);
-    this->sensor_bms_left_cell_29_->publish_state(NAN);
-    this->sensor_bms_left_cell_30_->publish_state(NAN);
-    this->sensor_bms_left_cell_31_->publish_state(NAN);
-    this->sensor_bms_left_cell_32_->publish_state(NAN);
-    this->sensor_bms_left_cell_33_->publish_state(NAN);
-    this->sensor_bms_left_cell_34_->publish_state(NAN);
-    this->sensor_bms_left_cell_35_->publish_state(NAN);
-    this->sensor_bms_left_cell_36_->publish_state(NAN);
-    this->sensor_bms_left_temp_1_->publish_state(NAN);
-    this->sensor_bms_left_temp_2_->publish_state(NAN);
-    this->sensor_bms_left_temp_3_->publish_state(NAN);
-    this->sensor_bms_left_temp_4_->publish_state(NAN);
-    this->sensor_bms_left_temp_5_->publish_state(NAN);
-    this->sensor_bms_left_temp_6_->publish_state(NAN);
-    this->sensor_bms_right_cell_01_->publish_state(NAN);
-    this->sensor_bms_right_cell_02_->publish_state(NAN);
-    this->sensor_bms_right_cell_03_->publish_state(NAN);
-    this->sensor_bms_right_cell_04_->publish_state(NAN);
-    this->sensor_bms_right_cell_05_->publish_state(NAN);
-    this->sensor_bms_right_cell_06_->publish_state(NAN);
-    this->sensor_bms_right_cell_07_->publish_state(NAN);
-    this->sensor_bms_right_cell_08_->publish_state(NAN);
-    this->sensor_bms_right_cell_09_->publish_state(NAN);
-    this->sensor_bms_right_cell_10_->publish_state(NAN);
-    this->sensor_bms_right_cell_11_->publish_state(NAN);
-    this->sensor_bms_right_cell_12_->publish_state(NAN);
-    this->sensor_bms_right_cell_13_->publish_state(NAN);
-    this->sensor_bms_right_cell_14_->publish_state(NAN);
-    this->sensor_bms_right_cell_15_->publish_state(NAN);
-    this->sensor_bms_right_cell_16_->publish_state(NAN);
-    this->sensor_bms_right_cell_17_->publish_state(NAN);
-    this->sensor_bms_right_cell_18_->publish_state(NAN);
-    this->sensor_bms_right_cell_19_->publish_state(NAN);
-    this->sensor_bms_right_cell_20_->publish_state(NAN);
-    this->sensor_bms_right_cell_21_->publish_state(NAN);
-    this->sensor_bms_right_cell_22_->publish_state(NAN);
-    this->sensor_bms_right_cell_23_->publish_state(NAN);
-    this->sensor_bms_right_cell_24_->publish_state(NAN);
-    this->sensor_bms_right_cell_25_->publish_state(NAN);
-    this->sensor_bms_right_cell_26_->publish_state(NAN);
-    this->sensor_bms_right_cell_27_->publish_state(NAN);
-    this->sensor_bms_right_cell_28_->publish_state(NAN);
-    this->sensor_bms_right_cell_29_->publish_state(NAN);
-    this->sensor_bms_right_cell_30_->publish_state(NAN);
-    this->sensor_bms_right_cell_31_->publish_state(NAN);
-    this->sensor_bms_right_cell_32_->publish_state(NAN);
-    this->sensor_bms_right_cell_33_->publish_state(NAN);
-    this->sensor_bms_right_cell_34_->publish_state(NAN);
-    this->sensor_bms_right_cell_35_->publish_state(NAN);
-    this->sensor_bms_right_cell_36_->publish_state(NAN);
-    this->sensor_bms_right_temp_1_->publish_state(NAN);
-    this->sensor_bms_right_temp_2_->publish_state(NAN);
-    this->sensor_bms_right_temp_3_->publish_state(NAN);
-    this->sensor_bms_right_temp_4_->publish_state(NAN);
-    this->sensor_bms_right_temp_5_->publish_state(NAN);
-    this->sensor_bms_right_temp_6_->publish_state(NAN);
-}
 } // namespace veteran
 } // namespace esphome

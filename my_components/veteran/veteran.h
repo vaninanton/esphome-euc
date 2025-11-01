@@ -120,9 +120,13 @@ class VeteranComponent : public Component
 public:
   EUCData euc;
 
+  /// @brief Обработка входящего BLE пакета и формирование пакета для разбора
+  /// @param x 
   void parse_ble_packet(const std::vector<uint8_t> &x);
+
+  /// @brief Парсинг пакета данных колеса
+  /// @param bytes 
   void parse_packet(const std::vector<uint8_t> &bytes);
-  void on_ble_disconnected();
 
   void binary_sensor_charging(binary_sensor::BinarySensor *s) { binary_sensor_charging_ = s; }
   void binary_sensor_low_power_mode(binary_sensor::BinarySensor *s) { binary_sensor_low_power_mode_ = s; }
@@ -132,80 +136,7 @@ public:
   void sensor_bms_left_current(sensor::Sensor *s) { sensor_bms_left_current_ = s; }
   void sensor_bms_right_current(sensor::Sensor *s) { sensor_bms_right_current_ = s; }
   void sensor_charging_stop_voltage(sensor::Sensor *s) { sensor_charging_stop_voltage_ = s; }
-
-  void sensor_bms_left_cell_01(sensor::Sensor *s) { sensor_bms_left_cell_01_ = s; }
-  void sensor_bms_left_cell_02(sensor::Sensor *s) { sensor_bms_left_cell_02_ = s; }
-  void sensor_bms_left_cell_03(sensor::Sensor *s) { sensor_bms_left_cell_03_ = s; }
-  void sensor_bms_left_cell_04(sensor::Sensor *s) { sensor_bms_left_cell_04_ = s; }
-  void sensor_bms_left_cell_05(sensor::Sensor *s) { sensor_bms_left_cell_05_ = s; }
-  void sensor_bms_left_cell_06(sensor::Sensor *s) { sensor_bms_left_cell_06_ = s; }
-  void sensor_bms_left_cell_07(sensor::Sensor *s) { sensor_bms_left_cell_07_ = s; }
-  void sensor_bms_left_cell_08(sensor::Sensor *s) { sensor_bms_left_cell_08_ = s; }
-  void sensor_bms_left_cell_09(sensor::Sensor *s) { sensor_bms_left_cell_09_ = s; }
-  void sensor_bms_left_cell_10(sensor::Sensor *s) { sensor_bms_left_cell_10_ = s; }
-  void sensor_bms_left_cell_11(sensor::Sensor *s) { sensor_bms_left_cell_11_ = s; }
-  void sensor_bms_left_cell_12(sensor::Sensor *s) { sensor_bms_left_cell_12_ = s; }
-  void sensor_bms_left_cell_13(sensor::Sensor *s) { sensor_bms_left_cell_13_ = s; }
-  void sensor_bms_left_cell_14(sensor::Sensor *s) { sensor_bms_left_cell_14_ = s; }
-  void sensor_bms_left_cell_15(sensor::Sensor *s) { sensor_bms_left_cell_15_ = s; }
-  void sensor_bms_left_cell_16(sensor::Sensor *s) { sensor_bms_left_cell_16_ = s; }
-  void sensor_bms_left_cell_17(sensor::Sensor *s) { sensor_bms_left_cell_17_ = s; }
-  void sensor_bms_left_cell_18(sensor::Sensor *s) { sensor_bms_left_cell_18_ = s; }
-  void sensor_bms_left_cell_19(sensor::Sensor *s) { sensor_bms_left_cell_19_ = s; }
-  void sensor_bms_left_cell_20(sensor::Sensor *s) { sensor_bms_left_cell_20_ = s; }
-  void sensor_bms_left_cell_21(sensor::Sensor *s) { sensor_bms_left_cell_21_ = s; }
-  void sensor_bms_left_cell_22(sensor::Sensor *s) { sensor_bms_left_cell_22_ = s; }
-  void sensor_bms_left_cell_23(sensor::Sensor *s) { sensor_bms_left_cell_23_ = s; }
-  void sensor_bms_left_cell_24(sensor::Sensor *s) { sensor_bms_left_cell_24_ = s; }
-  void sensor_bms_left_cell_25(sensor::Sensor *s) { sensor_bms_left_cell_25_ = s; }
-  void sensor_bms_left_cell_26(sensor::Sensor *s) { sensor_bms_left_cell_26_ = s; }
-  void sensor_bms_left_cell_27(sensor::Sensor *s) { sensor_bms_left_cell_27_ = s; }
-  void sensor_bms_left_cell_28(sensor::Sensor *s) { sensor_bms_left_cell_28_ = s; }
-  void sensor_bms_left_cell_29(sensor::Sensor *s) { sensor_bms_left_cell_29_ = s; }
-  void sensor_bms_left_cell_30(sensor::Sensor *s) { sensor_bms_left_cell_30_ = s; }
-  void sensor_bms_left_cell_31(sensor::Sensor *s) { sensor_bms_left_cell_31_ = s; }
-  void sensor_bms_left_cell_32(sensor::Sensor *s) { sensor_bms_left_cell_32_ = s; }
-  void sensor_bms_left_cell_33(sensor::Sensor *s) { sensor_bms_left_cell_33_ = s; }
-  void sensor_bms_left_cell_34(sensor::Sensor *s) { sensor_bms_left_cell_34_ = s; }
-  void sensor_bms_left_cell_35(sensor::Sensor *s) { sensor_bms_left_cell_35_ = s; }
-  void sensor_bms_left_cell_36(sensor::Sensor *s) { sensor_bms_left_cell_36_ = s; }
-
-  void sensor_bms_right_cell_01(sensor::Sensor *s) { sensor_bms_right_cell_01_ = s; }
-  void sensor_bms_right_cell_02(sensor::Sensor *s) { sensor_bms_right_cell_02_ = s; }
-  void sensor_bms_right_cell_03(sensor::Sensor *s) { sensor_bms_right_cell_03_ = s; }
-  void sensor_bms_right_cell_04(sensor::Sensor *s) { sensor_bms_right_cell_04_ = s; }
-  void sensor_bms_right_cell_05(sensor::Sensor *s) { sensor_bms_right_cell_05_ = s; }
-  void sensor_bms_right_cell_06(sensor::Sensor *s) { sensor_bms_right_cell_06_ = s; }
-  void sensor_bms_right_cell_07(sensor::Sensor *s) { sensor_bms_right_cell_07_ = s; }
-  void sensor_bms_right_cell_08(sensor::Sensor *s) { sensor_bms_right_cell_08_ = s; }
-  void sensor_bms_right_cell_09(sensor::Sensor *s) { sensor_bms_right_cell_09_ = s; }
-  void sensor_bms_right_cell_10(sensor::Sensor *s) { sensor_bms_right_cell_10_ = s; }
-  void sensor_bms_right_cell_11(sensor::Sensor *s) { sensor_bms_right_cell_11_ = s; }
-  void sensor_bms_right_cell_12(sensor::Sensor *s) { sensor_bms_right_cell_12_ = s; }
-  void sensor_bms_right_cell_13(sensor::Sensor *s) { sensor_bms_right_cell_13_ = s; }
-  void sensor_bms_right_cell_14(sensor::Sensor *s) { sensor_bms_right_cell_14_ = s; }
-  void sensor_bms_right_cell_15(sensor::Sensor *s) { sensor_bms_right_cell_15_ = s; }
-  void sensor_bms_right_cell_16(sensor::Sensor *s) { sensor_bms_right_cell_16_ = s; }
-  void sensor_bms_right_cell_17(sensor::Sensor *s) { sensor_bms_right_cell_17_ = s; }
-  void sensor_bms_right_cell_18(sensor::Sensor *s) { sensor_bms_right_cell_18_ = s; }
-  void sensor_bms_right_cell_19(sensor::Sensor *s) { sensor_bms_right_cell_19_ = s; }
-  void sensor_bms_right_cell_20(sensor::Sensor *s) { sensor_bms_right_cell_20_ = s; }
-  void sensor_bms_right_cell_21(sensor::Sensor *s) { sensor_bms_right_cell_21_ = s; }
-  void sensor_bms_right_cell_22(sensor::Sensor *s) { sensor_bms_right_cell_22_ = s; }
-  void sensor_bms_right_cell_23(sensor::Sensor *s) { sensor_bms_right_cell_23_ = s; }
-  void sensor_bms_right_cell_24(sensor::Sensor *s) { sensor_bms_right_cell_24_ = s; }
-  void sensor_bms_right_cell_25(sensor::Sensor *s) { sensor_bms_right_cell_25_ = s; }
-  void sensor_bms_right_cell_26(sensor::Sensor *s) { sensor_bms_right_cell_26_ = s; }
-  void sensor_bms_right_cell_27(sensor::Sensor *s) { sensor_bms_right_cell_27_ = s; }
-  void sensor_bms_right_cell_28(sensor::Sensor *s) { sensor_bms_right_cell_28_ = s; }
-  void sensor_bms_right_cell_29(sensor::Sensor *s) { sensor_bms_right_cell_29_ = s; }
-  void sensor_bms_right_cell_30(sensor::Sensor *s) { sensor_bms_right_cell_30_ = s; }
-  void sensor_bms_right_cell_31(sensor::Sensor *s) { sensor_bms_right_cell_31_ = s; }
-  void sensor_bms_right_cell_32(sensor::Sensor *s) { sensor_bms_right_cell_32_ = s; }
-  void sensor_bms_right_cell_33(sensor::Sensor *s) { sensor_bms_right_cell_33_ = s; }
-  void sensor_bms_right_cell_34(sensor::Sensor *s) { sensor_bms_right_cell_34_ = s; }
-  void sensor_bms_right_cell_35(sensor::Sensor *s) { sensor_bms_right_cell_35_ = s; }
-  void sensor_bms_right_cell_36(sensor::Sensor *s) { sensor_bms_right_cell_36_ = s; }
+  void sensor_power(sensor::Sensor *s) { sensor_power_ = s; }
 
   void sensor_bms_left_temp_1(sensor::Sensor *s) { sensor_bms_left_temp_1_ = s; }
   void sensor_bms_left_temp_2(sensor::Sensor *s) { sensor_bms_left_temp_2_ = s; }
@@ -239,80 +170,7 @@ protected:
   sensor::Sensor *sensor_bms_left_current_;
   sensor::Sensor *sensor_bms_right_current_;
   sensor::Sensor *sensor_charging_stop_voltage_;
-
-  sensor::Sensor *sensor_bms_left_cell_01_;
-  sensor::Sensor *sensor_bms_left_cell_02_;
-  sensor::Sensor *sensor_bms_left_cell_03_;
-  sensor::Sensor *sensor_bms_left_cell_04_;
-  sensor::Sensor *sensor_bms_left_cell_05_;
-  sensor::Sensor *sensor_bms_left_cell_06_;
-  sensor::Sensor *sensor_bms_left_cell_07_;
-  sensor::Sensor *sensor_bms_left_cell_08_;
-  sensor::Sensor *sensor_bms_left_cell_09_;
-  sensor::Sensor *sensor_bms_left_cell_10_;
-  sensor::Sensor *sensor_bms_left_cell_11_;
-  sensor::Sensor *sensor_bms_left_cell_12_;
-  sensor::Sensor *sensor_bms_left_cell_13_;
-  sensor::Sensor *sensor_bms_left_cell_14_;
-  sensor::Sensor *sensor_bms_left_cell_15_;
-  sensor::Sensor *sensor_bms_left_cell_16_;
-  sensor::Sensor *sensor_bms_left_cell_17_;
-  sensor::Sensor *sensor_bms_left_cell_18_;
-  sensor::Sensor *sensor_bms_left_cell_19_;
-  sensor::Sensor *sensor_bms_left_cell_20_;
-  sensor::Sensor *sensor_bms_left_cell_21_;
-  sensor::Sensor *sensor_bms_left_cell_22_;
-  sensor::Sensor *sensor_bms_left_cell_23_;
-  sensor::Sensor *sensor_bms_left_cell_24_;
-  sensor::Sensor *sensor_bms_left_cell_25_;
-  sensor::Sensor *sensor_bms_left_cell_26_;
-  sensor::Sensor *sensor_bms_left_cell_27_;
-  sensor::Sensor *sensor_bms_left_cell_28_;
-  sensor::Sensor *sensor_bms_left_cell_29_;
-  sensor::Sensor *sensor_bms_left_cell_30_;
-  sensor::Sensor *sensor_bms_left_cell_31_;
-  sensor::Sensor *sensor_bms_left_cell_32_;
-  sensor::Sensor *sensor_bms_left_cell_33_;
-  sensor::Sensor *sensor_bms_left_cell_34_;
-  sensor::Sensor *sensor_bms_left_cell_35_;
-  sensor::Sensor *sensor_bms_left_cell_36_;
-
-  sensor::Sensor *sensor_bms_right_cell_01_;
-  sensor::Sensor *sensor_bms_right_cell_02_;
-  sensor::Sensor *sensor_bms_right_cell_03_;
-  sensor::Sensor *sensor_bms_right_cell_04_;
-  sensor::Sensor *sensor_bms_right_cell_05_;
-  sensor::Sensor *sensor_bms_right_cell_06_;
-  sensor::Sensor *sensor_bms_right_cell_07_;
-  sensor::Sensor *sensor_bms_right_cell_08_;
-  sensor::Sensor *sensor_bms_right_cell_09_;
-  sensor::Sensor *sensor_bms_right_cell_10_;
-  sensor::Sensor *sensor_bms_right_cell_11_;
-  sensor::Sensor *sensor_bms_right_cell_12_;
-  sensor::Sensor *sensor_bms_right_cell_13_;
-  sensor::Sensor *sensor_bms_right_cell_14_;
-  sensor::Sensor *sensor_bms_right_cell_15_;
-  sensor::Sensor *sensor_bms_right_cell_16_;
-  sensor::Sensor *sensor_bms_right_cell_17_;
-  sensor::Sensor *sensor_bms_right_cell_18_;
-  sensor::Sensor *sensor_bms_right_cell_19_;
-  sensor::Sensor *sensor_bms_right_cell_20_;
-  sensor::Sensor *sensor_bms_right_cell_21_;
-  sensor::Sensor *sensor_bms_right_cell_22_;
-  sensor::Sensor *sensor_bms_right_cell_23_;
-  sensor::Sensor *sensor_bms_right_cell_24_;
-  sensor::Sensor *sensor_bms_right_cell_25_;
-  sensor::Sensor *sensor_bms_right_cell_26_;
-  sensor::Sensor *sensor_bms_right_cell_27_;
-  sensor::Sensor *sensor_bms_right_cell_28_;
-  sensor::Sensor *sensor_bms_right_cell_29_;
-  sensor::Sensor *sensor_bms_right_cell_30_;
-  sensor::Sensor *sensor_bms_right_cell_31_;
-  sensor::Sensor *sensor_bms_right_cell_32_;
-  sensor::Sensor *sensor_bms_right_cell_33_;
-  sensor::Sensor *sensor_bms_right_cell_34_;
-  sensor::Sensor *sensor_bms_right_cell_35_;
-  sensor::Sensor *sensor_bms_right_cell_36_;
+  sensor::Sensor *sensor_power_;
 
   sensor::Sensor *sensor_bms_left_temp_1_;
   sensor::Sensor *sensor_bms_left_temp_2_;
