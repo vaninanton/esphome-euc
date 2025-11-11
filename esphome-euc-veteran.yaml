@@ -23,6 +23,7 @@ logger:
     esp32_ble_client: ERROR
     light: ERROR
     sensor: ERROR
+    number: ERROR
     text_sensor: ERROR
     esp32_ble_tracker: ERROR
     safe_mode: ERROR
@@ -306,6 +307,9 @@ veteran:
   high_speed_mode:
     id: high_speed_mode
     name: "${euc_name} High speed mode"
+  headlight:
+    id: headlight
+    name: "${euc_name} Headlight"
 switch:
   - platform: ble_client
     name: "BLE connect"
@@ -318,17 +322,50 @@ switch:
     optimistic: true
     entity_category: config
     restore_mode: DISABLED
-    on_turn_on:
+    lambda: return id(headlight).state;
+    turn_on_action:
       - ble_client.ble_write:
           id: euc
           service_uuid: FFE0
           characteristic_uuid: FFE1
           value: !lambda |-
               return {0x4C, 0x6B, 0x41, 0x70, 0x0D, 0x01, 0x80, 0x80, 0x01, 0x57, 0xED, 0x3B, 0xD5, 0x4C, 0x64, 0x41, 0x70, 0x0D, 0x01, 0x00, 0x80, 0x01, 0x6F, 0xF8, 0x32, 0xF9};
-    on_turn_off:
+    turn_off_action:
       - ble_client.ble_write:
           id: euc
           service_uuid: FFE0
           characteristic_uuid: FFE1
           value: !lambda |-
               return {0x4C, 0x6B, 0x41, 0x70, 0x0D, 0x01, 0x80, 0x80, 0x00, 0x20, 0xEA, 0x0B, 0x43, 0x4C, 0x64, 0x41, 0x70, 0x0D, 0x01, 0x00, 0x80, 0x00, 0x18, 0xFF, 0x02, 0x6F};
+  - platform: template
+    name: "${euc_name} Charge to 151.2V"
+    id: euc_max_charge_switch
+    optimistic: true
+    entity_category: config
+    restore_mode: DISABLED
+    on_turn_on:
+      - ble_client.ble_write:
+          id: euc
+          service_uuid: FFE0
+          characteristic_uuid: FFE1
+          value: !lambda |-
+              return {0x4C, 0x64, 0x41, 0x70, 0x1D, 0x01, 0x02, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x3E, 0x83, 0x26, 0x35, 0xD8};
+    on_turn_off:
+      - ble_client.ble_write:
+          id: euc
+          service_uuid: FFE0
+          characteristic_uuid: FFE1
+          value: !lambda |-
+              return {0x4C, 0x64, 0x41, 0x70, 0x1D, 0x01, 0x02, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x14, 0x58, 0x9D, 0xFC, 0x0E};
+number:
+  - platform: template
+    name: "Max charging voltage"
+    id: max_charging_voltage
+    optimistic: true
+    min_value: 147.0
+    max_value: 151.2
+    step: 0.1
+    unit_of_measurement: "V"
+    set_action:
+      - lambda: !lambda |-
+            id(veteran_ext).send_packet(x);

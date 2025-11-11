@@ -1,5 +1,7 @@
+// Copyright 2025 <Tony V>
 #pragma once
 
+#include <vector>
 #include "esphome/core/component.h"
 #include "esphome/core/hal.h"
 #include "esphome/components/sensor/sensor.h"
@@ -7,12 +9,9 @@
 #include "esphome/components/text_sensor/text_sensor.h"
 #include "esp_crc.h"
 
-namespace esphome
-{
-namespace veteran
-{
-struct BMSBlockData
-{
+namespace esphome {
+namespace veteran {
+struct BMSBlockData {
   float cell01;
   float cell02;
   float cell03;
@@ -58,23 +57,22 @@ struct BMSBlockData
   float temp6;
 };
 
-struct BMSData
-{
+struct BMSData {
   BMSBlockData left;
   BMSBlockData right;
 };
 
-struct EUCData
-{
+struct EUCData {
   bool charging;
+  bool headlight;
   bool high_speed_mode;
   bool low_power_mode;
   char firmware_version[9];
-  float mileage_current; // Пробег текущей поездки
-  float mileage_total;   // Общий пробег
-  float temperature_controller;
+  float mileage_current;         // Пробег текущей поездки
+  float mileage_total;           // Общий пробег
+  float temperature_controller;  // Температура, как на экране
   float temperature_motor;
-  uint16_t auto_off; // Время в секундах до выключения (900 - выключаться не будет)
+  uint16_t auto_off;             // Время в секундах до выключения (900 - выключаться не будет)
   uint16_t brightness;
   uint16_t charging_stop_voltage;
   uint16_t current;
@@ -82,7 +80,7 @@ struct EUCData
   uint16_t fw;
   uint16_t gyro_level;
   uint16_t modelVersion;
-  uint16_t pedals_mode; // 0 - soft, 100 - hard
+  uint16_t pedals_mode;          // 0 - soft, 100 - hard
   uint16_t phase_current;
   uint16_t pitch_angle;
   uint16_t pwm;
@@ -92,10 +90,8 @@ struct EUCData
   uint16_t tho_ra;
   uint16_t voltage;
 
-  float battery_percentage(bool linearType = false) const
-  {
-    if (linearType)
-    {
+  float battery_percentage(bool linearType = false) const {
+    if (linearType) {
       if (this->voltage > 14804)
         return 100;
       if (this->voltage > 11903)
@@ -115,141 +111,89 @@ struct EUCData
   BMSData bms;
 };
 
-class VeteranComponent : public Component
-{
-public:
+class VeteranComponent : public Component {
+ public:
   EUCData euc;
 
   /// @brief Обработка входящего BLE пакета и формирование пакета для разбора
-  /// @param x 
+  /// @param x
   void parse_ble_packet(const std::vector<uint8_t> &x);
 
   /// @brief Парсинг пакета данных колеса
-  /// @param bytes 
+  /// @param bytes
   void parse_packet(const std::vector<uint8_t> &bytes);
 
+  /// @brief Парсинг пакета данных колеса
+  void send_packet(float &voltage);
+
   void binary_sensor_charging(binary_sensor::BinarySensor *s) { binary_sensor_charging_ = s; }
-  void binary_sensor_low_power_mode(binary_sensor::BinarySensor *s) { binary_sensor_low_power_mode_ = s; }
+  void binary_sensor_headlight(binary_sensor::BinarySensor *s) { binary_sensor_headlight_ = s; }
   void binary_sensor_high_speed_mode(binary_sensor::BinarySensor *s) { binary_sensor_high_speed_mode_ = s; }
+  void binary_sensor_low_power_mode(binary_sensor::BinarySensor *s) { binary_sensor_low_power_mode_ = s; }
   void sensor_auto_off(sensor::Sensor *s) { sensor_auto_off_ = s; }
   void sensor_battery_percentage(sensor::Sensor *s) { sensor_battery_percentage_ = s; }
   void sensor_bms_left_current(sensor::Sensor *s) { sensor_bms_left_current_ = s; }
-  void sensor_bms_right_current(sensor::Sensor *s) { sensor_bms_right_current_ = s; }
-  void sensor_charging_stop_voltage(sensor::Sensor *s) { sensor_charging_stop_voltage_ = s; }
-  void sensor_power(sensor::Sensor *s) { sensor_power_ = s; }
-
   void sensor_bms_left_temp_1(sensor::Sensor *s) { sensor_bms_left_temp_1_ = s; }
   void sensor_bms_left_temp_2(sensor::Sensor *s) { sensor_bms_left_temp_2_ = s; }
   void sensor_bms_left_temp_3(sensor::Sensor *s) { sensor_bms_left_temp_3_ = s; }
   void sensor_bms_left_temp_4(sensor::Sensor *s) { sensor_bms_left_temp_4_ = s; }
   void sensor_bms_left_temp_5(sensor::Sensor *s) { sensor_bms_left_temp_5_ = s; }
   void sensor_bms_left_temp_6(sensor::Sensor *s) { sensor_bms_left_temp_6_ = s; }
+  void sensor_bms_right_current(sensor::Sensor *s) { sensor_bms_right_current_ = s; }
   void sensor_bms_right_temp_1(sensor::Sensor *s) { sensor_bms_right_temp_1_ = s; }
   void sensor_bms_right_temp_2(sensor::Sensor *s) { sensor_bms_right_temp_2_ = s; }
   void sensor_bms_right_temp_3(sensor::Sensor *s) { sensor_bms_right_temp_3_ = s; }
   void sensor_bms_right_temp_4(sensor::Sensor *s) { sensor_bms_right_temp_4_ = s; }
   void sensor_bms_right_temp_5(sensor::Sensor *s) { sensor_bms_right_temp_5_ = s; }
   void sensor_bms_right_temp_6(sensor::Sensor *s) { sensor_bms_right_temp_6_ = s; }
-
-  void sensor_temperature_motor(sensor::Sensor *s) { sensor_temperature_motor_ = s; }
-  void sensor_temperature_controller(sensor::Sensor *s) { sensor_temperature_controller_ = s; }
-  void sensor_tho_ra(sensor::Sensor *s) { sensor_tho_ra_ = s; }
+  void sensor_charging_stop_voltage(sensor::Sensor *s) { sensor_charging_stop_voltage_ = s; }
   void sensor_mileage_current(sensor::Sensor *s) { sensor_mileage_current_ = s; }
   void sensor_mileage_total(sensor::Sensor *s) { sensor_mileage_total_ = s; }
+  void sensor_power(sensor::Sensor *s) { sensor_power_ = s; }
+  void sensor_temperature_controller(sensor::Sensor *s) { sensor_temperature_controller_ = s; }
+  void sensor_temperature_motor(sensor::Sensor *s) { sensor_temperature_motor_ = s; }
+  void sensor_tho_ra(sensor::Sensor *s) { sensor_tho_ra_ = s; }
   void sensor_voltage(sensor::Sensor *s) { sensor_voltage_ = s; }
   void text_sensor_firmware_version(text_sensor::TextSensor *s) { text_sensor_firmware_version_ = s; }
 
-protected:
+ protected:
   std::vector<uint8_t> ble_buffer_;
 
   binary_sensor::BinarySensor *binary_sensor_charging_;
-  binary_sensor::BinarySensor *binary_sensor_low_power_mode_;
+  binary_sensor::BinarySensor *binary_sensor_headlight_;
   binary_sensor::BinarySensor *binary_sensor_high_speed_mode_;
+  binary_sensor::BinarySensor *binary_sensor_low_power_mode_;
   sensor::Sensor *sensor_auto_off_;
   sensor::Sensor *sensor_battery_percentage_;
   sensor::Sensor *sensor_bms_left_current_;
-  sensor::Sensor *sensor_bms_right_current_;
-  sensor::Sensor *sensor_charging_stop_voltage_;
-  sensor::Sensor *sensor_power_;
-
   sensor::Sensor *sensor_bms_left_temp_1_;
   sensor::Sensor *sensor_bms_left_temp_2_;
   sensor::Sensor *sensor_bms_left_temp_3_;
   sensor::Sensor *sensor_bms_left_temp_4_;
   sensor::Sensor *sensor_bms_left_temp_5_;
   sensor::Sensor *sensor_bms_left_temp_6_;
+  sensor::Sensor *sensor_bms_right_current_;
   sensor::Sensor *sensor_bms_right_temp_1_;
   sensor::Sensor *sensor_bms_right_temp_2_;
   sensor::Sensor *sensor_bms_right_temp_3_;
   sensor::Sensor *sensor_bms_right_temp_4_;
   sensor::Sensor *sensor_bms_right_temp_5_;
   sensor::Sensor *sensor_bms_right_temp_6_;
-  sensor::Sensor *sensor_temperature_motor_;
-  sensor::Sensor *sensor_temperature_controller_;
-  sensor::Sensor *sensor_tho_ra_;
+  sensor::Sensor *sensor_charging_stop_voltage_;
   sensor::Sensor *sensor_mileage_current_;
   sensor::Sensor *sensor_mileage_total_;
+  sensor::Sensor *sensor_power_;
+  sensor::Sensor *sensor_temperature_controller_;
+  sensor::Sensor *sensor_temperature_motor_;
+  sensor::Sensor *sensor_tho_ra_;
   sensor::Sensor *sensor_voltage_;
   text_sensor::TextSensor *text_sensor_firmware_version_;
 
-  uint16_t unsignedShortFromBytesBE(const std::vector<uint8_t> &bytes, int offset)
-  {
-    if (bytes.empty() || bytes.size() < offset + 2)
-    {
-      ESP_LOGE("unsignedShortFromBytesBE", "bytes is empty or too short");
-      return 0;
-    }
-
-    uint8_t high = bytes[offset], low = bytes[offset + 1];
-    uint16_t v = high << 8 | low;
-    return v;
-  }
-
-  int16_t shortFromBytesBE(const std::vector<uint8_t> &bytes, int offset)
-  {
-    if (bytes.empty() || bytes.size() < offset + 2)
-    {
-      ESP_LOGE("shortFromBytesBE", "bytes is empty or too short");
-      return 0;
-    }
-
-    int8_t high = bytes[offset], low = bytes[offset + 1];
-    int16_t v = high << 8 | low;
-    return v;
-  }
-
-  uint32_t longFromBytesBE(const std::vector<uint8_t> &bytes, int offset)
-  {
-    if (bytes.empty() || bytes.size() < offset + 4)
-    {
-      ESP_LOGE("longFromBytesBE", "bytes is empty or too short");
-      return 0;
-    }
-    return (((bytes[offset] & 0xFF) << 24) | ((bytes[offset + 1] & 0xFF) << 16) | ((bytes[offset + 2] & 0xFF) << 8) | (bytes[offset + 3] & 0xFF)) & 0xFFFFFFFFL;
-  }
-
-  uint32_t unsignedLongFromBytesMidLE(const std::vector<uint8_t> &bytes, int offset)
-  {
-    if (bytes.empty() || bytes.size() < offset + 4)
-    {
-      ESP_LOGE("unsignedLongFromBytesMidLE", "bytes is empty or too short");
-      return 0;
-    }
-
-    return (((bytes[offset + 2] & 0xFF) << 24) | ((bytes[offset + 3] & 0xFF) << 16) | ((bytes[offset] & 0xFF) << 8) | (bytes[offset + 1] & 0xFF));
-  }
-
-  bool check_crc32(const std::vector<uint8_t> &bytes, uint8_t expected_length)
-  {
-    // Считаем CRC по всему, кроме последних двух байт
-    uint32_t crc_calc = esp_crc32_le(0, bytes.data(), expected_length);
-    uint32_t crc_recv = longFromBytesBE(bytes, expected_length);
-
-    if (crc_recv == crc_calc)
-      return true;
-    ESP_LOGW("CRC", "(recv=%04X calc=%04X)", crc_recv, crc_calc);
-    return false;
-  }
+  uint16_t unsignedShortFromBytesBE(const std::vector<uint8_t> &bytes, int offset);
+  int16_t shortFromBytesBE(const std::vector<uint8_t> &bytes, int offset);
+  uint32_t longFromBytesBE(const std::vector<uint8_t> &bytes, int offset);
+  uint32_t unsignedLongFromBytesMidLE(const std::vector<uint8_t> &bytes, int offset);
+  bool check_crc32(const std::vector<uint8_t> &bytes);
 };
-} // namespace veteran
-} // namespace esphome
+}  // namespace veteran
+}  // namespace esphome

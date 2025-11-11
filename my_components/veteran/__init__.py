@@ -9,6 +9,7 @@ my_ns = cg.esphome_ns.namespace("veteran")
 VeteranComponent = my_ns.class_("VeteranComponent", cg.Component)
 
 BINARY_FIELDS = {
+    "headlight": "binary_sensor_headlight",
     "charging": "binary_sensor_charging",
     "low_power_mode": "binary_sensor_low_power_mode",
     "high_speed_mode": "binary_sensor_high_speed_mode",

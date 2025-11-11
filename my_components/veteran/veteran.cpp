@@ -1,10 +1,12 @@
+// Copyright 2025 <Tony V>
+#include <cstdio>
+#include <vector>
 #include "veteran.h"
 
 namespace esphome {
-namespace veteran{
+namespace veteran {
 
-void VeteranComponent::parse_ble_packet(const std::vector<uint8_t>& x)
-{
+void VeteranComponent::parse_ble_packet(const std::vector<uint8_t>& x) {
     // ESP_LOGD("BLE", "(%zu) %s", x.size(), format_hex_pretty(x, ' ', false).c_str());
 
     this->ble_buffer_.insert(this->ble_buffer_.end(), x.begin(), x.end());
@@ -12,8 +14,7 @@ void VeteranComponent::parse_ble_packet(const std::vector<uint8_t>& x)
     constexpr uint8_t HEADER[] = {0xDC, 0x5A, 0x5C};
     constexpr size_t HEADER_SIZE = sizeof(HEADER);
 
-    while (this->ble_buffer_.size() >= HEADER_SIZE)
-    {
+    while (this->ble_buffer_.size() >= HEADER_SIZE) {
         // Пока не наткнулись на заголовок - удаляем начало
         if (!std::equal(HEADER, HEADER + HEADER_SIZE, this->ble_buffer_.begin())) {
             this->ble_buffer_.erase(this->ble_buffer_.begin());
@@ -23,14 +24,15 @@ void VeteranComponent::parse_ble_packet(const std::vector<uint8_t>& x)
         // Ждем третий байт (длину пакета)
         if (this->ble_buffer_.size() < HEADER_SIZE + 1) break;
         uint8_t length = ble_buffer_[3];
-        
+
         // заголовок + длина пакета + байт длины + 1 байт для CRC
         size_t expected_length = HEADER_SIZE + length + 1;
 
-        if (this->ble_buffer_.size() < expected_length) break; // ждём полный пакет
-        
+        // ждём полный пакет
+        if (this->ble_buffer_.size() < expected_length) break;
+
         std::vector<uint8_t> bytes(this->ble_buffer_.begin(), this->ble_buffer_.begin() + expected_length);
-        if (check_crc32(bytes, length)) {
+        if (check_crc32(bytes)) {
             // ESP_LOGD("EUC", "%s", format_hex_pretty(bytes, ' ', false).c_str());
             parse_packet(bytes);
         }
@@ -41,8 +43,7 @@ void VeteranComponent::parse_ble_packet(const std::vector<uint8_t>& x)
     if (this->ble_buffer_.size() > 1024) this->ble_buffer_.clear();
 }
 
-void VeteranComponent::parse_packet(const std::vector<uint8_t>& bytes)
-{
+void VeteranComponent::parse_packet(const std::vector<uint8_t>& bytes) {
     this->euc.voltage = unsignedShortFromBytesBE(bytes, 4);
     this->euc.speed = shortFromBytesBE(bytes, 6);
     this->euc.mileage_current = unsignedLongFromBytesMidLE(bytes, 8) / 1000.0f;
@@ -50,17 +51,18 @@ void VeteranComponent::parse_packet(const std::vector<uint8_t>& bytes)
     this->euc.phase_current = shortFromBytesBE(bytes, 16);
     this->euc.temperature_motor = unsignedShortFromBytesBE(bytes, 18) / 100.0f;
     this->euc.auto_off = unsignedShortFromBytesBE(bytes, 20);
-    this->euc.charging = bytes[22] == 0x01;
+    this->euc.charging = bytes[23] == 0x01;
     this->euc.speed_alert = unsignedShortFromBytesBE(bytes, 24);
     this->euc.speed_tiltback = unsignedShortFromBytesBE(bytes, 26);
 
     uint16_t fw = unsignedShortFromBytesBE(bytes, 28);
     this->euc.modelVersion = fw / 1000;
-    
-    snprintf(this->euc.firmware_version, 9, "%03d.%01d.%02d", this->euc.modelVersion, (fw / 100) % 10, fw % 100);
+
+    snprintf(this->euc.firmware_version, sizeof(this->euc.firmware_version), "%03d.%01d.%02d", this->euc.modelVersion, (fw / 100) % 10, fw % 100);
 
     this->euc.pedals_mode = unsignedShortFromBytesBE(bytes, 30) - 100;
-    this->euc.pitch_angle = shortFromBytesBE(bytes, 32); // наклон вперед/назад | если около 6248 - стоит на родной подножке
+    // наклон вперед/назад | если около 6248 - стоит на родной подножке
+    this->euc.pitch_angle = shortFromBytesBE(bytes, 32);
     this->euc.pwm = unsignedShortFromBytesBE(bytes, 34);
 
     this->sensor_voltage_->publish_state(this->euc.voltage / 100.0f);
@@ -89,9 +91,9 @@ void VeteranComponent::parse_packet(const std::vector<uint8_t>& bytes)
         if (bytes[46] == 0x00 || bytes[46] == 0x04) {
             // 0 - livedata
             // Ток: отрицательное значение - заряд, положительное - разряд
-            this->euc.temperature_controller = unsignedShortFromBytesBE(bytes, 59) / 100.0f; // Температура, как на экране
-            this->euc.bms.left.current = shortFromBytesBE(bytes, 69) / -100.0f; // Ток левой батареи
-            this->euc.bms.right.current = shortFromBytesBE(bytes, 71) / -100.0f; // Ток правой батареи
+            this->euc.temperature_controller = unsignedShortFromBytesBE(bytes, 59) / 100.0f;
+            this->euc.bms.left.current = shortFromBytesBE(bytes, 69) / -100.0f;
+            this->euc.bms.right.current = shortFromBytesBE(bytes, 71) / -100.0f;
 
             this->sensor_bms_left_current_->publish_state(this->euc.bms.left.current);
             this->sensor_bms_right_current_->publish_state(this->euc.bms.right.current);
@@ -168,7 +170,7 @@ void VeteranComponent::parse_packet(const std::vector<uint8_t>& bytes)
             this->euc.bms.left.temp4  = unsignedShortFromBytesBE(bytes, 53) / 100.0f;
             this->euc.bms.left.temp5  = unsignedShortFromBytesBE(bytes, 55) / 100.0f;
             this->euc.bms.left.temp6  = unsignedShortFromBytesBE(bytes, 57) / 100.0f;
-            
+
             this->euc.bms.left.cell31 = unsignedShortFromBytesBE(bytes, 59) / 1000.0f;
             this->euc.bms.left.cell32 = unsignedShortFromBytesBE(bytes, 61) / 1000.0f;
             this->euc.bms.left.cell33 = unsignedShortFromBytesBE(bytes, 63) / 1000.0f;
@@ -182,7 +184,6 @@ void VeteranComponent::parse_packet(const std::vector<uint8_t>& bytes)
             this->sensor_bms_left_temp_4_->publish_state(this->euc.bms.left.temp4);
             this->sensor_bms_left_temp_5_->publish_state(this->euc.bms.left.temp5);
             this->sensor_bms_left_temp_6_->publish_state(this->euc.bms.left.temp6);
-            
             // this->sensor_bms_left_cell_31_->publish_state(this->euc.bms.left.cell31);
             // this->sensor_bms_left_cell_32_->publish_state(this->euc.bms.left.cell32);
             // this->sensor_bms_left_cell_33_->publish_state(this->euc.bms.left.cell33);
@@ -274,7 +275,7 @@ void VeteranComponent::parse_packet(const std::vector<uint8_t>& bytes)
             this->sensor_bms_right_temp_4_->publish_state(this->euc.bms.right.temp4);
             this->sensor_bms_right_temp_5_->publish_state(this->euc.bms.right.temp5);
             this->sensor_bms_right_temp_6_->publish_state(this->euc.bms.right.temp6);
-            
+
             // this->sensor_bms_right_cell_31_->publish_state(this->euc.bms.right.cell31);
             // this->sensor_bms_right_cell_32_->publish_state(this->euc.bms.right.cell32);
             // this->sensor_bms_right_cell_33_->publish_state(this->euc.bms.right.cell33);
@@ -282,6 +283,7 @@ void VeteranComponent::parse_packet(const std::vector<uint8_t>& bytes)
             // this->sensor_bms_right_cell_35_->publish_state(this->euc.bms.right.cell35);
             // this->sensor_bms_right_cell_36_->publish_state(this->euc.bms.right.cell36);
         } else if (bytes[46] == 0x08) {
+            this->euc.headlight = bytes[47] == 0x01;
             // this->euc.gyro_level = unsignedShortFromBytesBE(bytes, 51);
             // this->euc.brightness = unsignedShortFromBytesBE(bytes, 55);
             this->euc.low_power_mode = bytes[60] == 0x01;
@@ -291,15 +293,86 @@ void VeteranComponent::parse_packet(const std::vector<uint8_t>& bytes)
             // this->euc.cra_lu = bytes[??];
             this->euc.charging_stop_voltage = unsignedShortFromBytesBE(bytes, 63) + 682;
 
-            this->binary_sensor_low_power_mode_->publish_state(this->euc.low_power_mode);
+            this->binary_sensor_headlight_->publish_state(this->euc.headlight);
             this->binary_sensor_high_speed_mode_->publish_state(this->euc.high_speed_mode);
+            this->binary_sensor_low_power_mode_->publish_state(this->euc.low_power_mode);
+            this->sensor_charging_stop_voltage_->publish_state(this->euc.charging_stop_voltage / 10.0f);
+            // this->sensor_cra_lu_->publish_state(this->euc.cra_lu);
             // this->sensor_cut_off_angle_->publish_state(this->euc.cut_off_angle);
             this->sensor_tho_ra_->publish_state(this->euc.tho_ra);
-            // this->sensor_cra_lu_->publish_state(this->euc.cra_lu);
-            this->sensor_charging_stop_voltage_->publish_state(this->euc.charging_stop_voltage / 10.0f);
         }
     }
 }
 
-} // namespace veteran
-} // namespace esphome
+void VeteranComponent::send_packet(float &voltage) {
+    uint8_t new_voltage = std::round(voltage) * 10;
+    ESP_LOGD("send_packet", "%d", new_voltage);
+    std::vector<uint8_t> package = {0x4C, 0x64, 0x41, 0x70, 0x1D, 0x01, 0x02, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00};
+    package[24] = (uint8_t)new_voltage + 1450;
+    // uint32_t crc_calc = esp_crc32_le(0, package, 27);
+    ESP_LOGD("package", "%s", format_hex_pretty(package, ' ', false).c_str());
+    // ESP_LOGD("crc_calc", "%s", format_hex_pretty(crc_calc, ' ', false).c_str());
+
+    // - ble_client.ble_write:
+    //     id: euc
+    //     service_uuid: FFE0
+    //     characteristic_uuid: FFE1
+    //     value: !lambda |-
+    //         uint8_t voltage = (uint8_t)(x + 1450);
+    //         uint8_t* package = {0x4C, 0x64, 0x41, 0x70, 0x1D, 0x01, 0x02, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80};
+    //         package[24] = voltage;
+    //         uint32_t crc_calc = esp_crc32_le(0, package, 27);
+    //         return package;
+}
+
+uint16_t VeteranComponent::unsignedShortFromBytesBE(const std::vector<uint8_t> &bytes, int offset) {
+  if (bytes.empty() || bytes.size() < offset + 2) {
+    ESP_LOGE("unsignedShortFromBytesBE", "bytes is empty or too short");
+    return 0;
+  }
+
+  uint8_t high = bytes[offset], low = bytes[offset + 1];
+  uint16_t v = high << 8 | low;
+  return v;
+}
+
+int16_t VeteranComponent::shortFromBytesBE(const std::vector<uint8_t> &bytes, int offset) {
+  if (bytes.empty() || bytes.size() < offset + 2) {
+    ESP_LOGE("shortFromBytesBE", "bytes is empty or too short");
+    return 0;
+  }
+
+  int8_t high = bytes[offset], low = bytes[offset + 1];
+  int16_t v = high << 8 | low;
+  return v;
+}
+
+uint32_t VeteranComponent::longFromBytesBE(const std::vector<uint8_t> &bytes, int offset) {
+  if (bytes.empty() || bytes.size() < offset + 4) {
+    ESP_LOGE("longFromBytesBE", "bytes is empty or too short");
+    return 0;
+  }
+  return (((bytes[offset] & 0xFF) << 24) | ((bytes[offset + 1] & 0xFF) << 16) | ((bytes[offset + 2] & 0xFF) << 8) | (bytes[offset + 3] & 0xFF)) & 0xFFFFFFFFL;
+}
+
+uint32_t VeteranComponent::unsignedLongFromBytesMidLE(const std::vector<uint8_t> &bytes, int offset) {
+  if (bytes.empty() || bytes.size() < offset + 4) {
+    ESP_LOGE("unsignedLongFromBytesMidLE", "bytes is empty or too short");
+    return 0;
+  }
+
+  return (((bytes[offset + 2] & 0xFF) << 24) | ((bytes[offset + 3] & 0xFF) << 16) | ((bytes[offset] & 0xFF) << 8) | (bytes[offset + 1] & 0xFF));
+}
+
+bool VeteranComponent::check_crc32(const std::vector<uint8_t> &bytes) {
+  // Считаем CRC по всему, кроме последних двух байт
+  uint32_t crc_calc = esp_crc32_le(0, bytes.data(), bytes.size());
+  uint32_t crc_recv = longFromBytesBE(bytes, bytes.size());
+
+  if (crc_recv == crc_calc)
+    return true;
+  ESP_LOGW("CRC", "(recv=%04X calc=%04X)", crc_recv, crc_calc);
+  return false;
+}
+}  // namespace veteran
+}  // namespace esphome
