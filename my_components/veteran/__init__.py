@@ -1,9 +1,9 @@
 import esphome.codegen as cg
 import esphome.config_validation as cv
-from esphome.components import binary_sensor, sensor, text_sensor
+from esphome.components import binary_sensor, number, sensor, text_sensor
 from esphome.const import CONF_ID
 
-AUTO_LOAD = ["binary_sensor", "sensor", "text_sensor"]
+AUTO_LOAD = ["binary_sensor", "number", "sensor", "text_sensor"]
 
 my_ns = cg.esphome_ns.namespace("veteran")
 VeteranComponent = my_ns.class_("VeteranComponent", cg.Component)
@@ -50,6 +50,7 @@ TEXT_SENSOR_FIELDS = {
 
 CONFIG_SCHEMA = cv.Schema({
     cv.GenerateID(): cv.declare_id(VeteranComponent),
+    cv.Optional("max_charging_voltage_id"): cv.use_id(number.Number),
     **{cv.Optional(k): binary_sensor.binary_sensor_schema().extend(cv.COMPONENT_SCHEMA) for k in BINARY_FIELDS},
     **{cv.Optional(k): sensor.sensor_schema().extend(cv.COMPONENT_SCHEMA) for k in SENSOR_FIELDS},
     **{cv.Optional(k): text_sensor.text_sensor_schema().extend(cv.COMPONENT_SCHEMA) for k in TEXT_SENSOR_FIELDS},
@@ -73,4 +74,8 @@ async def to_code(config):
         if key in config:
             sens = await text_sensor.new_text_sensor(config[key])
             cg.add(getattr(var, setter)(sens))
-    
+
+    if "max_charging_voltage_id" in config:
+        num = await cg.get_variable(config["max_charging_voltage_id"])
+        cg.add(var.set_max_charging_voltage_number(num))
+

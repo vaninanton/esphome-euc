@@ -232,8 +232,13 @@ void VeteranComponent::parse_packet(const uint8_t *data, size_t size) {
           this->binary_sensor_headlight_->publish_state(this->euc.headlight);
           this->binary_sensor_high_speed_mode_->publish_state(this->euc.high_speed_mode);
           this->binary_sensor_low_power_mode_->publish_state(this->euc.low_power_mode);
-          this->sensor_charging_stop_voltage_->publish_state(this->euc.charging_stop_voltage / 10.0f);
+          if (this->sensor_charging_stop_voltage_ != nullptr) {
+            this->sensor_charging_stop_voltage_->publish_state(this->euc.charging_stop_voltage / 10.0f);
+          }
           this->sensor_tho_ra_->publish_state(this->euc.tho_ra);
+          if (this->max_charging_voltage_number_ != nullptr) {
+            this->max_charging_voltage_number_->publish_state(this->euc.charging_stop_voltage / 10.0f);
+          }
         }
         break;
     }
@@ -243,25 +248,18 @@ void VeteranComponent::parse_packet(const uint8_t *data, size_t size) {
 #undef R32m
 }
 
-void VeteranComponent::send_packet(float &voltage) {
-    uint8_t new_voltage = std::round(voltage) * 10;
-    ESP_LOGD("send_packet", "%d", new_voltage);
-    std::vector<uint8_t> package = {0x4C, 0x64, 0x41, 0x70, 0x1D, 0x01, 0x02, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00};
-    package[24] = (uint8_t)new_voltage + 1450;
-    // uint32_t crc_calc = esp_crc32_le(0, package, 27);
-    ESP_LOGD("package", "%s", format_hex_pretty(package, ' ', false).c_str());
-    // ESP_LOGD("crc_calc", "%s", format_hex_pretty(crc_calc, ' ', false).c_str());
-
-    // - ble_client.ble_write:
-    //     id: euc
-    //     service_uuid: FFE0
-    //     characteristic_uuid: FFE1
-    //     value: !lambda |-
-    //         uint8_t voltage = (uint8_t)(x + 1450);
-    //         uint8_t* package = {0x4C, 0x64, 0x41, 0x70, 0x1D, 0x01, 0x02, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80};
-    //         package[24] = voltage;
-    //         uint32_t crc_calc = esp_crc32_le(0, package, 27);
-    //         return package;
+std::vector<uint8_t> VeteranComponent::get_charge_packet(float voltage) {
+  // База пакета «макс. напряжение заряда» (25 байт), как в 7.3/7.4 veteran-protocol.md
+  std::vector<uint8_t> packet = {0x4C, 0x64, 0x41, 0x70, 0x1D, 0x01, 0x02, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x00};
+  // Кодирование: byte[24] = (voltage - 145) * 10 (151.2→62, 147→20 по рабочим пакетам)
+  float v = (voltage - 145.0f) * 10.0f;
+  packet[24] = (uint8_t) (v < 0 ? 0 : (v > 255 ? 255 : (uint8_t) (v + 0.5f)));
+  uint32_t crc = esp_crc32_le(0, packet.data(), 25);
+  packet.push_back((crc >> 24) & 0xFF);
+  packet.push_back((crc >> 16) & 0xFF);
+  packet.push_back((crc >> 8) & 0xFF);
+  packet.push_back(crc & 0xFF);
+  return packet;
 }
 
 uint16_t VeteranComponent::unsignedShortFromBytesBE(const std::vector<uint8_t> &bytes, int offset) {

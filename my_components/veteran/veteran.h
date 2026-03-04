@@ -8,6 +8,7 @@
 #include "esphome/components/sensor/sensor.h"
 #include "esphome/components/binary_sensor/binary_sensor.h"
 #include "esphome/components/text_sensor/text_sensor.h"
+#include "esphome/components/number/number.h"
 #include "esp_crc.h"
 
 namespace esphome {
@@ -125,8 +126,10 @@ class VeteranComponent : public Component {
   /// @brief Парсинг пакета данных колеса (обёртка над vector)
   void parse_packet(const std::vector<uint8_t> &bytes);
 
-  /// @brief Парсинг пакета данных колеса
-  void send_packet(float &voltage);
+  /// @brief Формирует BLE-пакет «макс. напряжение заряда» с CRC (для ble_client.ble_write).
+  /// @param voltage Напряжение в вольтах (147.0–151.2).
+  /// @return Пакет 29 байт для записи в FFE1.
+  std::vector<uint8_t> get_charge_packet(float voltage);
 
   void binary_sensor_charging(binary_sensor::BinarySensor *s) { binary_sensor_charging_ = s; }
   void binary_sensor_headlight(binary_sensor::BinarySensor *s) { binary_sensor_headlight_ = s; }
@@ -157,6 +160,8 @@ class VeteranComponent : public Component {
   void sensor_tho_ra(sensor::Sensor *s) { sensor_tho_ra_ = s; }
   void sensor_voltage(sensor::Sensor *s) { sensor_voltage_ = s; }
   void text_sensor_firmware_version(text_sensor::TextSensor *s) { text_sensor_firmware_version_ = s; }
+  /// Опционально: number «Max charging voltage» — обновляется из пакета (subtype 0x08).
+  void set_max_charging_voltage_number(number::Number *n) { max_charging_voltage_number_ = n; }
 
  protected:
   std::vector<uint8_t> ble_buffer_;
@@ -190,6 +195,7 @@ class VeteranComponent : public Component {
   sensor::Sensor *sensor_tho_ra_;
   sensor::Sensor *sensor_voltage_;
   text_sensor::TextSensor *text_sensor_firmware_version_;
+  number::Number *max_charging_voltage_number_{nullptr};
 
   uint16_t unsignedShortFromBytesBE(const std::vector<uint8_t> &bytes, int offset);
   int16_t shortFromBytesBE(const std::vector<uint8_t> &bytes, int offset);

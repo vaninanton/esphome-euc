@@ -103,6 +103,7 @@ binary_sensor:
       - switch.toggle: ble_connect_switch
 veteran:
   id: veteran_ext
+  max_charging_voltage_id: max_charging_voltage
   auto_off:
     id: auto_off
     name: "${euc_name} Auto Off"
@@ -111,14 +112,6 @@ veteran:
     state_class: measurement
     unit_of_measurement: sec
     accuracy_decimals: 0
-  charging_stop_voltage:
-    id: charging_stop_voltage
-    name: "${euc_name} Stop charging at"
-    icon: mdi:flash
-    device_class: voltage
-    state_class: measurement
-    unit_of_measurement: V
-    accuracy_decimals: 1
   temperature_motor:
     id: temperature_motor
     name: "${euc_name} Temperature motor"
@@ -337,26 +330,6 @@ switch:
           characteristic_uuid: FFE1
           value: !lambda |-
               return {0x4C, 0x6B, 0x41, 0x70, 0x0D, 0x01, 0x80, 0x80, 0x00, 0x20, 0xEA, 0x0B, 0x43, 0x4C, 0x64, 0x41, 0x70, 0x0D, 0x01, 0x00, 0x80, 0x00, 0x18, 0xFF, 0x02, 0x6F};
-  - platform: template
-    name: "${euc_name} Charge to 151.2V"
-    id: euc_max_charge_switch
-    optimistic: true
-    entity_category: config
-    restore_mode: DISABLED
-    on_turn_on:
-      - ble_client.ble_write:
-          id: euc
-          service_uuid: FFE0
-          characteristic_uuid: FFE1
-          value: !lambda |-
-              return {0x4C, 0x64, 0x41, 0x70, 0x1D, 0x01, 0x02, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x3E, 0x83, 0x26, 0x35, 0xD8};
-    on_turn_off:
-      - ble_client.ble_write:
-          id: euc
-          service_uuid: FFE0
-          characteristic_uuid: FFE1
-          value: !lambda |-
-              return {0x4C, 0x64, 0x41, 0x70, 0x1D, 0x01, 0x02, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x14, 0x58, 0x9D, 0xFC, 0x0E};
 number:
   - platform: template
     name: "Max charging voltage"
@@ -367,5 +340,9 @@ number:
     step: 0.1
     unit_of_measurement: "V"
     set_action:
-      - lambda: !lambda |-
-            id(veteran_ext).send_packet(x);
+      - ble_client.ble_write:
+          id: euc
+          service_uuid: FFE0
+          characteristic_uuid: FFE1
+          value: !lambda |-
+            return id(veteran_ext).get_charge_packet(x);
