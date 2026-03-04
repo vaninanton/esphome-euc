@@ -21,12 +21,12 @@ void VeteranComponent::parse_ble_packet(const std::vector<uint8_t>& x) {
             continue;
         }
 
-        // Ждем третий байт (длину пакета)
+        // Ждем байт длины (число байт после него: payload + CRC, т.е. length включает 4 байта CRC)
         if (this->ble_buffer_.size() < HEADER_SIZE + 1) break;
         uint8_t length = ble_buffer_[3];
 
-        // заголовок + длина пакета + байт длины + 1 байт для CRC
-        size_t expected_length = HEADER_SIZE + length + 1;
+        // Пакет: Header(3) + Length(1) + [Payload(length-4) + CRC(4)] = 4 + length
+        size_t expected_length = HEADER_SIZE + 1 + length;
 
         // ждём полный пакет
         if (this->ble_buffer_.size() < expected_length) break;
@@ -365,13 +365,15 @@ uint32_t VeteranComponent::unsignedLongFromBytesMidLE(const std::vector<uint8_t>
 }
 
 bool VeteranComponent::check_crc32(const std::vector<uint8_t> &bytes) {
-  // Считаем CRC по всему, кроме последних двух байт
-  uint32_t crc_calc = esp_crc32_le(0, bytes.data(), bytes.size());
-  uint32_t crc_recv = longFromBytesBE(bytes, bytes.size());
+  if (bytes.size() < 4) return false;
+  // CRC считается по данным без последних 4 байт; CRC хранится в конце в big-endian
+  size_t data_len = bytes.size() - 4;
+  uint32_t crc_calc = esp_crc32_le(0, bytes.data(), data_len);
+  uint32_t crc_recv = longFromBytesBE(bytes, data_len);
 
   if (crc_recv == crc_calc)
     return true;
-  ESP_LOGW("CRC", "(recv=%04X calc=%04X)", crc_recv, crc_calc);
+  ESP_LOGW("CRC", "(recv=%08lX calc=%08lX)", (unsigned long) crc_recv, (unsigned long) crc_calc);
   return false;
 }
 }  // namespace veteran
