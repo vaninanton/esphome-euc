@@ -1,6 +1,7 @@
 // Copyright 2025 <Tony V>
 #pragma once
 
+#include <cstddef>
 #include <vector>
 #include "esphome/core/component.h"
 #include "esphome/core/hal.h"
@@ -119,8 +120,9 @@ class VeteranComponent : public Component {
   /// @param x
   void parse_ble_packet(const std::vector<uint8_t> &x);
 
-  /// @brief Парсинг пакета данных колеса
-  /// @param bytes
+  /// @brief Парсинг пакета данных колеса (по указателю, без копирования)
+  void parse_packet(const uint8_t *data, size_t size);
+  /// @brief Парсинг пакета данных колеса (обёртка над vector)
   void parse_packet(const std::vector<uint8_t> &bytes);
 
   /// @brief Парсинг пакета данных колеса
@@ -193,6 +195,7 @@ class VeteranComponent : public Component {
   int16_t shortFromBytesBE(const std::vector<uint8_t> &bytes, int offset);
   uint32_t longFromBytesBE(const std::vector<uint8_t> &bytes, int offset);
   uint32_t unsignedLongFromBytesMidLE(const std::vector<uint8_t> &bytes, int offset);
+  bool check_crc32(const uint8_t *data, size_t size);
   bool check_crc32(const std::vector<uint8_t> &bytes);
 };
 }  // namespace veteran
