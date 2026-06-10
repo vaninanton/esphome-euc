@@ -1,0 +1,108 @@
+# Пакет одного устройства Veteran. Подключать через packages с подстановками:
+#   euc_id, euc_name, euc_mac, euc_device_id
+#   euc_nominal_voltage: напряжение полного заряда (36S×4.2V=151.2, 30S×4.2=126)
+#   euc_cell_count: кол-во ячеек батареи (36 для Lynx, 30 для Nosfet Aero)
+#   euc_charge_voltage_min: мин. заряд (обычно nominal − 4.2, напр. 147 для Lynx)
+#   euc_charge_stop_offset: для парсинга напряжения остановки зарядки в number (Lynx 682, Aero −70)
+# Остальное: max = nominal, charge_voltage_offset = nominal − 6.2 (только для записи команды зарядки).
+---
+ble_client:
+  - mac_address: "${euc_mac}"
+    id: euc_${euc_id}
+    auto_connect: true
+    on_connect:
+      then:
+        - lambda: |-
+            id(connected_${euc_id}).publish_state(true);
+    on_disconnect:
+      then:
+        - lambda: |-
+            id(connected_${euc_id}).publish_state(false);
+            id(veteran_${euc_id}).clear_realtime_data();
+sensor:
+  - platform: ble_client
+    id: states_${euc_id}
+    internal: true
+    entity_category: diagnostic
+    ble_client_id: euc_${euc_id}
+    device_id: ${euc_device_id}
+    type: characteristic
+    notify: true
+    service_uuid: FFE0
+    characteristic_uuid: FFE1
+    lambda: |-
+      id(veteran_${euc_id}).parse_ble_packet(x);
+      return {};
+binary_sensor:
+  - platform: template
+    id: connected_${euc_id}
+    name: "Connected"
+    icon: mdi:bluetooth
+    device_class: connectivity
+    device_id: ${euc_device_id}
+    web_server:
+      sorting_group_id: "sorting_group_${euc_id}"
+      sorting_weight: 0
+# Список: при двух пакетах сольётся в [lynx_config, nosfet_config]
+# web_server для сущностей veteran подставляется компонентом из sorting_group_id* (см. __init__.py)
+veteran:
+  - id: veteran_${euc_id}
+    id_prefix: ${euc_id}
+    device_id: ${euc_device_id}
+    sorting_group_id: "sorting_group_${euc_id}"
+    nominal_voltage: ${euc_nominal_voltage}
+    cell_count: ${euc_cell_count}
+    charge_stop_voltage_offset: ${euc_charge_stop_offset}
+    max_charging_voltage_id: max_charging_voltage_${euc_id}
+    switch_lights_id: euc_lights_${euc_id}
+switch:
+  # Внутренний переключатель BLE (управляется общим «Bluetooth» в основном yaml)
+  - platform: ble_client
+    id: ble_connect_${euc_id}
+    ble_client_id: euc_${euc_id}
+    internal: true
+  - platform: template
+    name: "Lights"
+    id: euc_lights_${euc_id}
+    device_id: ${euc_device_id}
+    icon: mdi:lightbulb
+    optimistic: true
+    entity_category: config
+    restore_mode: DISABLED
+    lambda: "return id(veteran_${euc_id}).get_euc_data().headlight;"
+    web_server:
+      sorting_group_id: "sorting_group_${euc_id}"
+      sorting_weight: 61
+    turn_on_action:
+      - ble_client.ble_write:
+          id: euc_${euc_id}
+          service_uuid: FFE0
+          characteristic_uuid: FFE1
+          value: !lambda "return id(veteran_${euc_id}).get_headlight_on_packet();"
+    turn_off_action:
+      - ble_client.ble_write:
+          id: euc_${euc_id}
+          service_uuid: FFE0
+          characteristic_uuid: FFE1
+          value: !lambda "return id(veteran_${euc_id}).get_headlight_off_packet();"
+number:
+  - platform: template
+    name: "Max charging voltage"
+    id: max_charging_voltage_${euc_id}
+    device_id: ${euc_device_id}
+    icon: mdi:flash
+    optimistic: true
+    entity_category: config
+    min_value: ${euc_charge_voltage_min}
+    max_value: ${euc_nominal_voltage}
+    step: 0.1
+    unit_of_measurement: "V"
+    web_server:
+      sorting_group_id: "sorting_group_${euc_id}"
+      sorting_weight: 62
+    set_action:
+      - ble_client.ble_write:
+          id: euc_${euc_id}
+          service_uuid: FFE0
+          characteristic_uuid: FFE1
+          value: !lambda "return id(veteran_${euc_id}).get_charge_packet(x);"

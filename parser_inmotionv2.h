@@ -4,7 +4,7 @@ void parse_inmotionv2_packet(std::vector<uint8_t> x)
 {
     // ESP_LOGD("PACKET", "%s", format_hex_pretty(x).c_str());
     // ESP_LOGI("P", "%s", format_hex_pretty(x).c_str());
-    if (x[2] != 0x14 || (x[4] & 0x7F) != 0x04) {
+    if (x.size() < 62 || x[2] != 0x14 || (x[4] & 0x7F) != 0x04) {
         return {};
     }
 

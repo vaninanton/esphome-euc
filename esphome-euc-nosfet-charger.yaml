@@ -1,0 +1,168 @@
+external_components:
+  - source: my_components
+esphome:
+  name: esphome-euc
+  friendly_name: ESPHome EUC Sensor
+  area: "Прихожая"
+  devices:
+    - id: nosfet_device
+      name: "Nosfet Aero"
+    - id: charger_device
+      name: "Fast charger"
+packages:
+  - !include
+    file: package-veteran-device.yaml
+    vars:
+      euc_id: nosfet
+      euc_name: "Nosfet Aero"
+      euc_mac: !secret euc_nosfet_mac
+      euc_device_id: nosfet_device
+      euc_nominal_voltage: 126
+      euc_cell_count: 30
+      euc_charge_voltage_min: 122.0
+      euc_charge_stop_offset: 0
+  - !include
+    file: package-charger-device.yaml
+    vars:
+      charger_id: fast_charger
+      charger_mac: !secret fast_charger_mac
+      charger_device_id: charger_device
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+logger:
+  level: INFO
+  logs:
+    ble_sensor: WARN
+    binary_sensor: WARN
+    component: WARN
+    esp32_ble: WARN
+    esp32_ble_client: WARN
+    light: WARN
+    sensor: WARN
+    number: WARN
+    text_sensor: WARN
+    esp32_ble_tracker: WARN
+    safe_mode: WARN
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  fast_connect: true
+  ap:
+api:
+  encryption:
+    key: !secret ha_encryption_key
+  batch_delay: 150ms
+  max_send_queue: 4
+ota:
+  - platform: esphome
+    password: !secret wifi_password
+web_server:
+  port: 80
+  include_internal: false
+  version: 3
+  sorting_groups:
+    - id: sorting_group_nosfet
+      name: "Nosfet Aero"
+      sorting_weight: 0
+    - id: sorting_group_fast_charger
+      name: "Fast charger"
+      sorting_weight: 10
+    - id: sorting_group_diagnostic
+      name: "Diagnostic"
+      sorting_weight: 100
+debug:
+  update_interval: 10s
+sensor:
+  - platform: debug
+    free:
+      name: "Heap Free"
+      unit_of_measurement: "B"
+      device_class: data_size
+      state_class: measurement
+    block:
+      name: "Heap Max Block"
+      unit_of_measurement: "B"
+      device_class: data_size
+      state_class: measurement
+    min_free:
+      name: "Heap Min Free"
+      unit_of_measurement: "B"
+      device_class: data_size
+      state_class: measurement
+    fragmentation:
+      name: "Heap Fragmentation"
+      unit_of_measurement: "%"
+      state_class: measurement
+    loop_time:
+      name: "Loop Time"
+      unit_of_measurement: "ms"
+      state_class: measurement
+    cpu_frequency:
+      name: "CPU Frequency"
+      unit_of_measurement: "MHz"
+      state_class: measurement
+      filters:
+        - lambda: "return x / 1000000.0f;"
+output:
+  - platform: gpio
+    pin:
+      number: GPIO2
+      ignore_strapping_warning: true
+    id: gpio_d2
+light:
+  - platform: binary
+    name: EUC Connected LED
+    id: status
+    output: gpio_d2
+    internal: true
+    entity_category: "diagnostic"
+esp32_ble_tracker:
+switch:
+  - platform: template
+    name: "Bluetooth"
+    id: ble_all
+    icon: mdi:bluetooth
+    entity_category: config
+    lambda: "return id(connected_nosfet).state || id(charger_connected_fast_charger).state;"
+    turn_off_action:
+      - switch.turn_off: ble_connect_nosfet
+      - switch.turn_off: ble_connect_fast_charger
+    turn_on_action:
+      - switch.turn_on: ble_connect_nosfet
+      - switch.turn_on: ble_connect_fast_charger
+button:
+  - platform: restart
+    name: "Restart ESP32"
+    entity_category: diagnostic
+    web_server:
+      sorting_group_id: sorting_group_diagnostic
+      sorting_weight: 0
+binary_sensor:
+  - platform: template
+    id: any_ble_connected
+    internal: true
+    lambda: "return id(connected_nosfet).state || id(charger_connected_fast_charger).state;"
+    on_state:
+      - if:
+          condition:
+            binary_sensor.is_on: any_ble_connected
+          then:
+            - light.turn_on: status
+          else:
+            - light.turn_off: status
+  - platform: gpio
+    pin:
+      number: GPIO0
+      inverted: true
+      mode: INPUT_PULLUP
+      ignore_strapping_warning: true
+    name: "Boot Button"
+    internal: true
+    entity_category: diagnostic
+    web_server:
+      sorting_group_id: sorting_group_diagnostic
+      sorting_weight: 1
+    on_press:
+      - switch.toggle: ble_all

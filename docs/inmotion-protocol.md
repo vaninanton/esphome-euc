@@ -44,9 +44,9 @@ So the first bytes act as a type/subtype identifier. The packet must have at lea
 
 ### 3.2 Byte order
 
-- **16‑bit values** in this protocol use **big‑endian** (high byte first), e.g.  
-  `value = (bytes[offset] << 8) | bytes[offset + 1]`.
-- **Signed 16‑bit (current):** same byte order, interpreted as `int16_t`; sign extension may apply when shifting (see implementation).
+- **16‑bit values** in this protocol use **little‑endian** (low byte first), e.g.  
+  `value = (bytes[offset + 1] << 8) | bytes[offset]`.
+- **Signed 16‑bit (current):** same byte order, interpreted as `int16_t`.
 
 ---
 
@@ -65,9 +65,9 @@ All offsets are **0‑based** from the start of the notification payload.
 
 | Offset | Size | Type | Scale | Description |
 |--------|------|------|--------|-------------|
-| 5–6 | 2 | uint16 BE | ÷ 100 → V | Battery voltage (e.g. 8440 → 84.40 V). |
-| 7–8 | 2 | int16 BE | ÷ 100 → A | Current (signed); positive = discharge, negative = charge. |
-| 33–34 | 2 | uint16 BE | ÷ 100 → % | Battery percentage (e.g. 8500 → 85.00%). |
+| 5–6 | 2 | uint16 LE | ÷ 100 → V | Battery voltage (e.g. 0x20, 0xF8 → 8440 → 84.40 V). |
+| 7–8 | 2 | int16 LE | ÷ 100 → A | Current (signed); positive = discharge, negative = charge. |
+| 33–34 | 2 | uint16 LE | ÷ 100 → % | Battery percentage (e.g. 8500 → 85.00%). |
 | 61 | 1 | byte | bits | Status flags: bit 7 = charging, bit 6 = lifted. |
 
 **Formulas (from code):**
@@ -75,7 +75,7 @@ All offsets are **0‑based** from the start of the notification payload.
 - Voltage (V): `((bytes[6] & 0xFF) << 8) | (bytes[5] & 0xFF)` then divide by 100.
 - Current (A): `(bytes[8] << 8) | (bytes[7] & 0xFF)` as int16, then divide by 100.
 - Battery %: `((bytes[34] & 0xFF) << 8) | (bytes[33] & 0xFF)` then divide by 100.
-- Power (W): `(current_A) * (voltage_V)` (current and voltage already in physical units after scale).
+- Power (W): `voltage_V * current_A` (both already scaled).
 - Charging: `(bytes[61] >> 7) & 0x01` → 1 = charging, 0 = not charging.
 - Lifted: `(bytes[61] >> 6) & 0x01` → 1 = wheel lifted, 0 = on ground.
 
@@ -87,9 +87,9 @@ All offsets are **0‑based** from the start of the notification payload.
 |--------|------|------|------------------|-------------|
 | 2 | 1 | byte | 0x14 | Packet type. |
 | 4 | 1 | byte | 0x04 (low 7 bits) | Subtype. |
-| 5 | 2 | uint16 BE | ÷ 100 | Voltage (V). |
-| 7 | 2 | int16 BE | ÷ 100 | Current (A). |
-| 33 | 2 | uint16 BE | ÷ 100 | Battery percentage. |
+| 5 | 2 | uint16 LE | ÷ 100 | Voltage (V). |
+| 7 | 2 | int16 LE | ÷ 100 | Current (A). |
+| 33 | 2 | uint16 LE | ÷ 100 | Battery percentage. |
 | 61 | 1 | byte | bits 7–6 | Charging (7), Lifted (6). |
 
 ---
