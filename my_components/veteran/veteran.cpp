@@ -6,9 +6,11 @@
 #include "esphome/core/helpers.h"
 #include "esphome/core/log.h"
 #include "veteran.h"
+#include "esp_crc.h"
 
-namespace esphome {
-namespace veteran {
+namespace esphome::veteran {
+
+static const char *const TAG = "veteran";
 
 using namespace proto;
 
@@ -53,15 +55,28 @@ static void append_settings_chunk(std::vector<uint8_t> &out, const uint8_t *payl
   append_crc32_be(out, payload, len);
 }
 
-/// Инициализация компонента (пустая).
 void VeteranComponent::setup() {}
 
-/// Обрабатывает очередь пакетов: parse_packet → publish_state_from_euc.
+void VeteranComponent::dump_config() {
+  ESP_LOGCONFIG(TAG, "Veteran EUC:");
+  ESP_LOGCONFIG(TAG, "  Nominal voltage: %.1f V", nominal_voltage_);
+  ESP_LOGCONFIG(TAG, "  Cell count: %zu", cell_count_);
+  ESP_LOGCONFIG(TAG, "  Charge voltage offset: %.1f", charge_voltage_offset_);
+  ESP_LOGCONFIG(TAG, "  Charge stop voltage offset: %.1f", charge_stop_voltage_offset_);
+}
+
+/// Обрабатывает очередь пакетов: parse_packet → publish_state_from_euc (throttled).
 void VeteranComponent::loop() {
-  while (!packet_queue_.empty()) {
-    std::vector<uint8_t> packet = std::move(packet_queue_.front());
-    packet_queue_.erase(packet_queue_.begin());
-    parse_packet(packet.data(), packet.size());
+  if (packet_queue_.empty())
+    return;
+  // Process at most one packet per loop() call to avoid blocking the main loop.
+  std::vector<uint8_t> packet = std::move(packet_queue_.front());
+  packet_queue_.pop_front();
+  parse_packet(packet.data(), packet.size());
+
+  uint32_t now = millis();
+  if (now - last_publish_ms_ >= PUBLISH_INTERVAL_MS) {
+    last_publish_ms_ = now;
     publish_state_from_euc();
   }
 }
@@ -90,36 +105,42 @@ void VeteranComponent::clear_realtime_data() {
 
   ble_buffer_.clear();
   packet_queue_.clear();
+  last_publish_ms_ = 0;
   publish_state_from_euc();
 }
 
 /// Добавляет сырые байты в буфер, ищет заголовок 0xDC5A5C, извлекает пакеты с проверкой CRC в очередь.
 void VeteranComponent::parse_ble_packet(const std::vector<uint8_t> &x) {
+  if (ble_buffer_.size() + x.size() > BLE_BUFFER_MAX)
+    ble_buffer_.clear();
   ble_buffer_.insert(ble_buffer_.end(), x.begin(), x.end());
 
-  while (ble_buffer_.size() >= HEADER_SIZE) {
-    if (!std::equal(BLE_HEADER, BLE_HEADER + HEADER_SIZE, ble_buffer_.begin())) {
-      ble_buffer_.erase(ble_buffer_.begin());
+  size_t pos = 0;
+  const size_t buf_size = ble_buffer_.size();
+  while (pos + HEADER_SIZE <= buf_size) {
+    if (ble_buffer_[pos] != BLE_HEADER[0] || ble_buffer_[pos + 1] != BLE_HEADER[1] ||
+        ble_buffer_[pos + 2] != BLE_HEADER[2]) {
+      pos++;
       continue;
     }
-    if (ble_buffer_.size() < HEADER_SIZE + 1)
+    if (pos + HEADER_SIZE + 1 > buf_size)
       break;
-    uint8_t length_byte = ble_buffer_[LENGTH_BYTE_OFFSET];
+    uint8_t length_byte = ble_buffer_[pos + LENGTH_BYTE_OFFSET];
     size_t packet_len = HEADER_SIZE + 1 + length_byte;
-    if (ble_buffer_.size() < packet_len)
+    if (pos + packet_len > buf_size)
       break;
 
-    const uint8_t *p = ble_buffer_.data();
+    const uint8_t *p = ble_buffer_.data() + pos;
     if (check_crc32(p, packet_len)) {
       if (packet_queue_.size() < PACKET_QUEUE_MAX)
         packet_queue_.push_back(std::vector<uint8_t>(p, p + packet_len));
     }
-
-    ble_buffer_.erase(ble_buffer_.begin(), ble_buffer_.begin() + packet_len);
+    pos += packet_len;
   }
 
-  if (ble_buffer_.size() > BLE_BUFFER_MAX)
-    ble_buffer_.clear();
+  // Keep only unprocessed tail.
+  if (pos > 0)
+    ble_buffer_.erase(ble_buffer_.begin(), ble_buffer_.begin() + pos);
 }
 
 /// Разбирает один пакет: common payload + extended (если modelVersion≥5).
@@ -138,25 +159,17 @@ void VeteranComponent::parse_common_payload(const uint8_t *data, size_t size) {
   (void)size;
   const uint8_t *p = data + COMMON_PAYLOAD_OFFSET;
   euc_.voltage = read_u16_be(p + 0);
-  euc_.speed = read_s16_be(p + 2);
   euc_.mileage_current = read_u32_mid_le(p + 4) / 1000.0f;
   euc_.mileage_total = read_u32_mid_le(p + 8) / 1000.0f;
-  euc_.phase_current = read_s16_be(p + 12);
   euc_.temperature_motor = read_u16_be(p + 14) / 100.0f;
   euc_.auto_off = read_u16_be(p + 16);
   euc_.charging = data[COMMON_PAYLOAD_OFFSET + 19] == 0x01;
-  euc_.speed_alert = read_u16_be(p + 20);
-  euc_.speed_tiltback = read_u16_be(p + 22);
 
   uint16_t fw = read_u16_be(p + 24);
   euc_.modelVersion = fw / 1000;
   // Формат как в официальном приложении (декомпиляция): major.minor.patch (major без ведущего нуля).
   snprintf(euc_.firmware_version, sizeof(euc_.firmware_version), "%d.%01d.%02d",
            euc_.modelVersion, (fw / 100) % 10, fw % 100);
-
-  euc_.pedals_mode = read_u16_be(p + 26) - 100;
-  euc_.pitch_angle = read_s16_be(p + 28);
-  euc_.pwm = read_u16_be(p + 30);
 }
 
 /// Диспетчер по sub-type: Live (0x00/0x04), BMS left/right, Settings (0x08).
@@ -169,8 +182,7 @@ void VeteranComponent::parse_extended_payload(const uint8_t *data, size_t size) 
         euc_.temperature_controller = read_u16_be(data + LIVE_TEMP_CTRL_OFFSET) / 100.0f;
         euc_.bms.left.current = read_s16_be(data + LIVE_BMS_LEFT_CURRENT_OFFSET) / -100.0f;
         euc_.bms.right.current = read_s16_be(data + LIVE_BMS_RIGHT_CURRENT_OFFSET) / -100.0f;
-        if (size > LIVE_HEADLIGHT_LEVEL_OFFSET)
-          euc_.headlight_level = data[LIVE_HEADLIGHT_LEVEL_OFFSET];
+        // headlight_level из LIVE не читаем — байт 70 является младшим байтом bms_left_current
       }
       break;
 
@@ -227,10 +239,7 @@ void VeteranComponent::parse_bms_temps_and_cells(const uint8_t *data, size_t siz
     for (size_t i = 0; i < NUM_LAST_CELLS; i++)
       bms.cells[36 + i] = read_u16_be(data + BMS_CELLS_37_BASE + i * 2) / 1000.0f;
   }
-  for (size_t i = 0; i < BMSBlockData::NUM_TEMPS; i++) {
-    if (bms_temp_sensors_[side][i] != nullptr)
-      bms_temp_sensors_[side][i]->publish_state(bms.temps[i]);
-  }
+  // Температуры публикуются через publish_state_from_euc() по общему throttle.
 }
 
 /// Парсит Settings: headlight, low_power_mode, high_speed_mode, cut_off, tho_ra, charging_stop_voltage.
@@ -238,50 +247,14 @@ void VeteranComponent::parse_settings_subtype(const uint8_t *data, size_t size) 
   if (size < SETTINGS_MIN_SIZE)
     return;
   euc_.headlight = data[SETTINGS_HEADLIGHT_OFFSET] == 0x01;
-  euc_.low_power_mode = data[SETTINGS_LOW_POWER_OFFSET] == 0x01;
-  euc_.high_speed_mode = data[SETTINGS_HIGH_SPEED_OFFSET] == 0x01;
+  // 0x01 = включён, 0x00 = выключен, 0x80 = не поддерживается устройством (игнорируем)
+  if (data[SETTINGS_LOW_POWER_OFFSET] != 0x80)
+    euc_.low_power_mode = data[SETTINGS_LOW_POWER_OFFSET] == 0x01;
+  if (data[SETTINGS_HIGH_SPEED_OFFSET] != 0x80)
+    euc_.high_speed_mode = data[SETTINGS_HIGH_SPEED_OFFSET] == 0x01;
   euc_.cut_off_angle = data[SETTINGS_CUT_OFF_OFFSET];
   euc_.tho_ra = data[SETTINGS_THO_RA_OFFSET];
   euc_.charging_stop_voltage = (uint16_t)(read_u16_be(data + SETTINGS_CHARGE_V_OFFSET) + (int)charge_stop_voltage_offset_);
-}
-
-/// Находит min/max по 12 BMS-температурам и публикует в sensor_bms_temperature_min/max.
-void VeteranComponent::publish_bms_temps_min_max() {
-  float min_t = euc_.bms.left.temps[0];
-  float max_t = euc_.bms.left.temps[0];
-  for (size_t i = 1; i < BMSBlockData::NUM_TEMPS; i++) {
-    if (euc_.bms.left.temps[i] < min_t) min_t = euc_.bms.left.temps[i];
-    if (euc_.bms.left.temps[i] > max_t) max_t = euc_.bms.left.temps[i];
-  }
-  for (size_t i = 0; i < BMSBlockData::NUM_TEMPS; i++) {
-    if (euc_.bms.right.temps[i] < min_t) min_t = euc_.bms.right.temps[i];
-    if (euc_.bms.right.temps[i] > max_t) max_t = euc_.bms.right.temps[i];
-  }
-  if (sensor_bms_temperature_min_ != nullptr)
-    sensor_bms_temperature_min_->publish_state(min_t);
-  if (sensor_bms_temperature_max_ != nullptr)
-    sensor_bms_temperature_max_->publish_state(max_t);
-}
-
-/// Находит min/max/delta по всем ячейкам BMS и публикует в соответствующие сенсоры.
-void VeteranComponent::publish_bms_cells_min_max_delta() {
-  const size_t n = cell_count_;
-  float min_v = euc_.bms.left.cells[0];
-  float max_v = euc_.bms.left.cells[0];
-  for (size_t i = 1; i < n; i++) {
-    if (euc_.bms.left.cells[i] < min_v) min_v = euc_.bms.left.cells[i];
-    if (euc_.bms.left.cells[i] > max_v) max_v = euc_.bms.left.cells[i];
-  }
-  for (size_t i = 0; i < n; i++) {
-    if (euc_.bms.right.cells[i] < min_v) min_v = euc_.bms.right.cells[i];
-    if (euc_.bms.right.cells[i] > max_v) max_v = euc_.bms.right.cells[i];
-  }
-  if (sensor_bms_cell_voltage_min_ != nullptr)
-    sensor_bms_cell_voltage_min_->publish_state(min_v);
-  if (sensor_bms_cell_voltage_max_ != nullptr)
-    sensor_bms_cell_voltage_max_->publish_state(max_v);
-  if (sensor_bms_cell_voltage_delta_ != nullptr)
-    sensor_bms_cell_voltage_delta_->publish_state(max_v - min_v);
 }
 
 /// Синхронизирует euc_ с сенсорами: voltage, mileage, temps, BMS, headlight, режимы и т.д.
@@ -307,8 +280,12 @@ void VeteranComponent::publish_state_from_euc() {
     sensor_bms_left_current_->publish_state(euc_.bms.left.current);
   if (sensor_bms_right_current_ != nullptr)
     sensor_bms_right_current_->publish_state(euc_.bms.right.current);
-  publish_bms_temps_min_max();
-  publish_bms_cells_min_max_delta();
+  for (size_t i = 0; i < BMSBlockData::NUM_TEMPS; i++) {
+    if (bms_temp_sensors_[0][i] != nullptr)
+      bms_temp_sensors_[0][i]->publish_state(euc_.bms.left.temps[i]);
+    if (bms_temp_sensors_[1][i] != nullptr)
+      bms_temp_sensors_[1][i]->publish_state(euc_.bms.right.temps[i]);
+  }
   if (sensor_power_ != nullptr) {
     float power = euc_.voltage * (euc_.bms.left.current + euc_.bms.right.current) / 100.0f;
     sensor_power_->publish_state(power);
@@ -318,12 +295,8 @@ void VeteranComponent::publish_state_from_euc() {
 
   if (switch_lights_ != nullptr)
     switch_lights_->publish_state(euc_.headlight);
-  // Фара: один text_sensor Headlight — сырой байт 70 → Off / Level 1 / Level 2 / Level 3
-  if (text_sensor_headlight_ != nullptr) {
-    uint8_t raw = euc_.headlight_level;
-    const char *state = (raw == 0 || raw == 128 || raw >= 64) ? "Off" : (raw == 1 ? "Level 1" : (raw == 3 ? "Level 2" : "Level 3"));
-    text_sensor_headlight_->publish_state(state);
-  }
+  if (binary_sensor_headlight_ != nullptr)
+    binary_sensor_headlight_->publish_state(euc_.headlight);
   if (binary_sensor_high_speed_mode_ != nullptr)
     binary_sensor_high_speed_mode_->publish_state(euc_.high_speed_mode);
   if (binary_sensor_low_power_mode_ != nullptr)
@@ -336,7 +309,7 @@ void VeteranComponent::publish_state_from_euc() {
 
 /// Логирует исходящий BLE-пакет (label, размер, hex).
 static void log_ble_out(const char *label, const std::vector<uint8_t> &packet) {
-  ESP_LOGD("veteran", "BLE out [%s] size=%zu hex=%s", label, packet.size(), format_hex_pretty(packet).c_str());
+  ESP_LOGD(TAG, "BLE out [%s] size=%zu hex=%s", label, packet.size(), format_hex_pretty(packet).c_str());
 }
 
 /// Формирует пакет включения фары: два чанка 4C6B/4C64 + CRC.
@@ -402,9 +375,8 @@ bool VeteranComponent::check_crc32(const uint8_t *data, size_t size) {
                       data[data_len + 3];
   if (crc_recv == crc_calc)
     return true;
-  ESP_LOGW("veteran", "CRC mismatch recv=%08" PRIX32 " calc=%08" PRIX32, crc_recv, crc_calc);
+  ESP_LOGW(TAG, "CRC mismatch recv=%08" PRIX32 " calc=%08" PRIX32, crc_recv, crc_calc);
   return false;
 }
 
-}  // namespace veteran
-}  // namespace esphome
+}  // namespace esphome::veteran

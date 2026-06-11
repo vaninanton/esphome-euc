@@ -2,6 +2,7 @@
 #pragma once
 
 #include <cstddef>
+#include <deque>
 #include <vector>
 #include "esphome/core/component.h"
 #include "esphome/core/hal.h"
@@ -10,10 +11,8 @@
 #include "esphome/components/text_sensor/text_sensor.h"
 #include "esphome/components/number/number.h"
 #include "esphome/components/switch/switch.h"
-#include "esp_crc.h"
 
-namespace esphome {
-namespace veteran {
+namespace esphome::veteran {
 
 // --- Единый источник оффсетов протокола (см. docs/veteran-protocol.md) ---
 namespace proto {
@@ -28,7 +27,6 @@ constexpr size_t LIVE_SIZE = 73;
 constexpr size_t LIVE_TEMP_CTRL_OFFSET = 59;
 constexpr size_t LIVE_BMS_LEFT_CURRENT_OFFSET = 69;
 constexpr size_t LIVE_BMS_RIGHT_CURRENT_OFFSET = 71;
-constexpr size_t LIVE_HEADLIGHT_LEVEL_OFFSET = 70;  // уровень фары: 0=выкл, 1/3/5=уровни (см. разд. 8.1 протокола)
 constexpr size_t BMS_CELLS_BASE = 53;
 constexpr size_t BMS_TEMPS_BASE = 47;
 constexpr size_t BMS_CELLS_31_BASE = 59;
@@ -59,7 +57,6 @@ struct BMSData {
 struct EUCData {
   bool charging{};
   bool headlight{};
-  uint8_t headlight_level{};  // сырой Live байт 70: 128=выкл, 0/1/3/5=уровни
   bool high_speed_mode{};
   bool low_power_mode{};
   char firmware_version[9]{};
@@ -69,18 +66,8 @@ struct EUCData {
   float temperature_motor{};
   uint16_t auto_off{};  // секунды; 0xFFFF/900+ = выключено
   uint16_t charging_stop_voltage{};
-  uint16_t current{};
   uint16_t cut_off_angle{};
-  uint16_t fw{};
-  uint16_t gyro_level{};
   uint16_t modelVersion{};
-  uint16_t pedals_mode{};
-  uint16_t phase_current{};
-  uint16_t pitch_angle{};
-  uint16_t pwm{};
-  uint16_t speed{};
-  uint16_t speed_alert{};
-  uint16_t speed_tiltback{};
   uint16_t tho_ra{};
   uint16_t voltage{};
 
@@ -105,10 +92,7 @@ class VeteranComponent : public Component {
   void set_nominal_voltage(float v) { nominal_voltage_ = v; }
   void set_cell_count(int n) { cell_count_ = n; }
   /// Смещение для кодирования напряжения в пакете зарядки (опционально, иначе 145.0).
-  void set_charge_voltage_offset(float v) {
-    charge_voltage_offset_ = v;
-    charge_voltage_offset_set_ = true;
-  }
+  void set_charge_voltage_offset(float v) { charge_voltage_offset_ = v; }
   /// Смещение для декодирования charging_stop_voltage из входящих пакетов (682 для Lynx, 0 для Nosfet).
   void set_charge_stop_voltage_offset(float v) { charge_stop_voltage_offset_ = v; }
 
@@ -123,63 +107,57 @@ class VeteranComponent : public Component {
   std::vector<uint8_t> get_headlight_off_packet() const;
 
   // Сеттеры сущностей (все опциональны в YAML — указатели могут быть nullptr)
-  void binary_sensor_charging(binary_sensor::BinarySensor *s) { binary_sensor_charging_ = s; }
+  void set_binary_sensor_charging(binary_sensor::BinarySensor *s) { binary_sensor_charging_ = s; }
   void set_switch_lights(switch_::Switch *s) { switch_lights_ = s; }
-  void binary_sensor_high_speed_mode(binary_sensor::BinarySensor *s) { binary_sensor_high_speed_mode_ = s; }
-  void binary_sensor_low_power_mode(binary_sensor::BinarySensor *s) { binary_sensor_low_power_mode_ = s; }
-  void sensor_auto_off(sensor::Sensor *s) { sensor_auto_off_ = s; }
-  void sensor_battery_percentage(sensor::Sensor *s) { sensor_battery_percentage_ = s; }
-  void sensor_bms_left_current(sensor::Sensor *s) { sensor_bms_left_current_ = s; }
-  void sensor_bms_right_current(sensor::Sensor *s) { sensor_bms_right_current_ = s; }
-  void sensor_bms_temperature_min(sensor::Sensor *s) { sensor_bms_temperature_min_ = s; }
-  void sensor_bms_temperature_max(sensor::Sensor *s) { sensor_bms_temperature_max_ = s; }
-  void sensor_bms_cell_voltage_min(sensor::Sensor *s) { sensor_bms_cell_voltage_min_ = s; }
-  void sensor_bms_cell_voltage_max(sensor::Sensor *s) { sensor_bms_cell_voltage_max_ = s; }
-  void sensor_bms_cell_voltage_delta(sensor::Sensor *s) { sensor_bms_cell_voltage_delta_ = s; }
-  void sensor_mileage_current(sensor::Sensor *s) { sensor_mileage_current_ = s; }
-  void sensor_mileage_total(sensor::Sensor *s) { sensor_mileage_total_ = s; }
-  void sensor_power(sensor::Sensor *s) { sensor_power_ = s; }
-  void sensor_temperature_controller(sensor::Sensor *s) { sensor_temperature_controller_ = s; }
-  void sensor_temperature_motor(sensor::Sensor *s) { sensor_temperature_motor_ = s; }
-  void sensor_tho_ra(sensor::Sensor *s) { sensor_tho_ra_ = s; }
-  void sensor_voltage(sensor::Sensor *s) { sensor_voltage_ = s; }
-  void text_sensor_firmware_version(text_sensor::TextSensor *s) { text_sensor_firmware_version_ = s; }
-  void text_sensor_headlight(text_sensor::TextSensor *s) { text_sensor_headlight_ = s; }
+  void set_binary_sensor_high_speed_mode(binary_sensor::BinarySensor *s) { binary_sensor_high_speed_mode_ = s; }
+  void set_binary_sensor_low_power_mode(binary_sensor::BinarySensor *s) { binary_sensor_low_power_mode_ = s; }
+  void set_sensor_auto_off(sensor::Sensor *s) { sensor_auto_off_ = s; }
+  void set_sensor_battery_percentage(sensor::Sensor *s) { sensor_battery_percentage_ = s; }
+  void set_sensor_bms_left_current(sensor::Sensor *s) { sensor_bms_left_current_ = s; }
+  void set_sensor_bms_right_current(sensor::Sensor *s) { sensor_bms_right_current_ = s; }
+  void set_sensor_mileage_current(sensor::Sensor *s) { sensor_mileage_current_ = s; }
+  void set_sensor_mileage_total(sensor::Sensor *s) { sensor_mileage_total_ = s; }
+  void set_sensor_power(sensor::Sensor *s) { sensor_power_ = s; }
+  void set_sensor_temperature_controller(sensor::Sensor *s) { sensor_temperature_controller_ = s; }
+  void set_sensor_temperature_motor(sensor::Sensor *s) { sensor_temperature_motor_ = s; }
+  void set_sensor_tho_ra(sensor::Sensor *s) { sensor_tho_ra_ = s; }
+  void set_sensor_voltage(sensor::Sensor *s) { sensor_voltage_ = s; }
+  void set_text_sensor_firmware_version(text_sensor::TextSensor *s) { text_sensor_firmware_version_ = s; }
+  void set_binary_sensor_headlight(binary_sensor::BinarySensor *s) { binary_sensor_headlight_ = s; }
   void set_max_charging_voltage_number(number::Number *n) { max_charging_voltage_number_ = n; }
 
-  /// BMS температуры: side 0 = left, 1 = right; idx 0..5.
-  void set_bms_temp_sensor(int side, int idx, sensor::Sensor *s) {
-    if (side >= 0 && side <= 1 && idx >= 0 && idx < static_cast<int>(BMSBlockData::NUM_TEMPS))
-      bms_temp_sensors_[side][idx] = s;
-  }
-  void sensor_bms_left_temp_1(sensor::Sensor *s) { set_bms_temp_sensor(0, 0, s); }
-  void sensor_bms_left_temp_2(sensor::Sensor *s) { set_bms_temp_sensor(0, 1, s); }
-  void sensor_bms_left_temp_3(sensor::Sensor *s) { set_bms_temp_sensor(0, 2, s); }
-  void sensor_bms_left_temp_4(sensor::Sensor *s) { set_bms_temp_sensor(0, 3, s); }
-  void sensor_bms_left_temp_5(sensor::Sensor *s) { set_bms_temp_sensor(0, 4, s); }
-  void sensor_bms_left_temp_6(sensor::Sensor *s) { set_bms_temp_sensor(0, 5, s); }
-  void sensor_bms_right_temp_1(sensor::Sensor *s) { set_bms_temp_sensor(1, 0, s); }
-  void sensor_bms_right_temp_2(sensor::Sensor *s) { set_bms_temp_sensor(1, 1, s); }
-  void sensor_bms_right_temp_3(sensor::Sensor *s) { set_bms_temp_sensor(1, 2, s); }
-  void sensor_bms_right_temp_4(sensor::Sensor *s) { set_bms_temp_sensor(1, 3, s); }
-  void sensor_bms_right_temp_5(sensor::Sensor *s) { set_bms_temp_sensor(1, 4, s); }
-  void sensor_bms_right_temp_6(sensor::Sensor *s) { set_bms_temp_sensor(1, 5, s); }
+  void set_sensor_bms_left_temp_1(sensor::Sensor *s) { bms_temp_sensors_[0][0] = s; }
+  void set_sensor_bms_left_temp_2(sensor::Sensor *s) { bms_temp_sensors_[0][1] = s; }
+  void set_sensor_bms_left_temp_3(sensor::Sensor *s) { bms_temp_sensors_[0][2] = s; }
+  void set_sensor_bms_left_temp_4(sensor::Sensor *s) { bms_temp_sensors_[0][3] = s; }
+  void set_sensor_bms_left_temp_5(sensor::Sensor *s) { bms_temp_sensors_[0][4] = s; }
+  void set_sensor_bms_left_temp_6(sensor::Sensor *s) { bms_temp_sensors_[0][5] = s; }
+  void set_sensor_bms_right_temp_1(sensor::Sensor *s) { bms_temp_sensors_[1][0] = s; }
+  void set_sensor_bms_right_temp_2(sensor::Sensor *s) { bms_temp_sensors_[1][1] = s; }
+  void set_sensor_bms_right_temp_3(sensor::Sensor *s) { bms_temp_sensors_[1][2] = s; }
+  void set_sensor_bms_right_temp_4(sensor::Sensor *s) { bms_temp_sensors_[1][3] = s; }
+  void set_sensor_bms_right_temp_5(sensor::Sensor *s) { bms_temp_sensors_[1][4] = s; }
+  void set_sensor_bms_right_temp_6(sensor::Sensor *s) { bms_temp_sensors_[1][5] = s; }
 
   void setup() override;
   void loop() override;
+  void dump_config() override;
 
  protected:
   EUCData euc_;
 
   std::vector<uint8_t> ble_buffer_;
-  static constexpr size_t BLE_BUFFER_MAX = 1024;
+  static constexpr size_t BLE_BUFFER_MAX = 512;
   static constexpr size_t PACKET_QUEUE_MAX = 4;
-  std::vector<std::vector<uint8_t>> packet_queue_;
+  std::deque<std::vector<uint8_t>> packet_queue_;
+
+  // Throttle: не публиковать сенсоры чаще чем раз в PUBLISH_INTERVAL_MS мс.
+  static constexpr uint32_t PUBLISH_INTERVAL_MS = 2000;
+  uint32_t last_publish_ms_{0};
 
   float nominal_voltage_{151.2f};
   size_t cell_count_{36};
   float charge_voltage_offset_{145.0f};
-  bool charge_voltage_offset_set_{false};
   float charge_stop_voltage_offset_{682.0f};
 
   binary_sensor::BinarySensor *binary_sensor_charging_{nullptr};
@@ -190,11 +168,6 @@ class VeteranComponent : public Component {
   sensor::Sensor *sensor_battery_percentage_{nullptr};
   sensor::Sensor *sensor_bms_left_current_{nullptr};
   sensor::Sensor *sensor_bms_right_current_{nullptr};
-  sensor::Sensor *sensor_bms_temperature_min_{nullptr};
-  sensor::Sensor *sensor_bms_temperature_max_{nullptr};
-  sensor::Sensor *sensor_bms_cell_voltage_min_{nullptr};
-  sensor::Sensor *sensor_bms_cell_voltage_max_{nullptr};
-  sensor::Sensor *sensor_bms_cell_voltage_delta_{nullptr};
   sensor::Sensor *sensor_mileage_current_{nullptr};
   sensor::Sensor *sensor_mileage_total_{nullptr};
   sensor::Sensor *sensor_power_{nullptr};
@@ -204,7 +177,7 @@ class VeteranComponent : public Component {
   sensor::Sensor *sensor_voltage_{nullptr};
   sensor::Sensor *bms_temp_sensors_[2][BMSBlockData::NUM_TEMPS]{};
   text_sensor::TextSensor *text_sensor_firmware_version_{nullptr};
-  text_sensor::TextSensor *text_sensor_headlight_{nullptr};
+  binary_sensor::BinarySensor *binary_sensor_headlight_{nullptr};
   number::Number *max_charging_voltage_number_{nullptr};
 
   /// Парсит общий payload (offset 4–35): напряжение, скорость, пробег, температура, заряд и т.д.
@@ -219,10 +192,6 @@ class VeteranComponent : public Component {
   /// Парсит sub-type 0x08 Settings: фара, low_power, high_speed, cut_off, tho_ra, charging_stop_voltage.
   void parse_settings_subtype(const uint8_t *data, size_t size);
 
-  /// Публикует min/max температуры BMS по всем 12 датчикам (left+right).
-  void publish_bms_temps_min_max();
-  /// Публикует min/max/delta напряжений ячеек BMS.
-  void publish_bms_cells_min_max_delta();
   /// Копирует euc_ в сенсоры и бинарные сенсоры; вызывается после parse_packet и clear_realtime_data.
   void publish_state_from_euc();
 
@@ -230,5 +199,4 @@ class VeteranComponent : public Component {
   bool check_crc32(const uint8_t *data, size_t size);
 };
 
-}  // namespace veteran
-}  // namespace esphome
+}  // namespace esphome::veteran

@@ -3,8 +3,8 @@
 #   euc_nominal_voltage: напряжение полного заряда (36S×4.2V=151.2, 30S×4.2=126)
 #   euc_cell_count: кол-во ячеек батареи (36 для Lynx, 30 для Nosfet Aero)
 #   euc_charge_voltage_min: мин. заряд (обычно nominal − 4.2, напр. 147 для Lynx)
-#   euc_charge_stop_offset: для парсинга напряжения остановки зарядки в number (Lynx 682, Aero −70)
-# Остальное: max = nominal, charge_voltage_offset = nominal − 6.2 (только для записи команды зарядки).
+#   euc_charge_stop_offset: для парсинга charging_stop_voltage из входящих пакетов (Lynx 682, Aero −70)
+#   euc_charge_voltage_offset: base voltage для исходящей команды set_max_charge (Lynx 145, Aero 121)
 ---
 ble_client:
   - mac_address: "${euc_mac}"
@@ -53,6 +53,7 @@ veteran:
     nominal_voltage: ${euc_nominal_voltage}
     cell_count: ${euc_cell_count}
     charge_stop_voltage_offset: ${euc_charge_stop_offset}
+    charge_voltage_offset: ${euc_charge_voltage_offset}
     max_charging_voltage_id: max_charging_voltage_${euc_id}
     switch_lights_id: euc_lights_${euc_id}
 switch:
@@ -72,7 +73,7 @@ switch:
     lambda: "return id(veteran_${euc_id}).get_euc_data().headlight;"
     web_server:
       sorting_group_id: "sorting_group_${euc_id}"
-      sorting_weight: 61
+      sorting_weight: 51
     turn_on_action:
       - ble_client.ble_write:
           id: euc_${euc_id}
@@ -99,7 +100,7 @@ number:
     unit_of_measurement: "V"
     web_server:
       sorting_group_id: "sorting_group_${euc_id}"
-      sorting_weight: 62
+      sorting_weight: 52
     set_action:
       - ble_client.ble_write:
           id: euc_${euc_id}

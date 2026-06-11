@@ -89,10 +89,9 @@
 |--------|------|---------|
 | 59 | temperature_controller | u16 BE ÷100 → °C |
 | 69 | bms.left.current | s16 BE ÷ -100 → A |
-| 70 | headlight_level | u8: 128=выкл, 0/1/3/5=уровни |
 | 71 | bms.right.current | s16 BE ÷ -100 → A |
 
-**Headlight level → текст**: `128` или `≥64` → `"Off"`, `1` → `"Level 1"`, `3` → `"Level 2"`, `5` → `"Level 3"`.
+Байт `[70]` — младший байт `bms.left.current` (s16 BE [69..70]), не headlight. Состояние фары приходит только в Settings `[47]`.
 
 ### BMS Cells (0x01/0x02/0x05/0x06) — 15 ячеек
 
@@ -126,7 +125,7 @@
 ```
 charging_stop_voltage = read_u16_be(data + 63) + charge_stop_voltage_offset
 ```
-`charge_stop_voltage_offset`: 682 для Veteran Lynx (36S), 0 для NOSFET Aero (30S).  
+`charge_stop_voltage_offset`: 682 для Veteran Lynx (36S), -70 для NOSFET Aero (30S).  
 Финальное значение в V: `charging_stop_voltage / 10.0`.
 
 ---
@@ -212,10 +211,9 @@ veteran:
     id_prefix: lynx
     device_id: lynx_device
     sorting_group_id: "sorting_group_lynx"
-    sorting_group_id_bms: "sorting_group_lynx_bms"
     nominal_voltage: 151.2       # V полного заряда
-    cell_count: 36               # количество ячеек (для min/max/delta)
-    charge_stop_voltage_offset: 682  # Lynx: 682, Aero: 0
+    cell_count: 36               # количество ячеек
+    charge_stop_voltage_offset: 682  # Lynx: 682, Aero: -70
     # charge_voltage_offset: 145.0  # опционально, дефолт 145.0
     max_charging_voltage_id: max_charging_voltage_lynx
     switch_lights_id: euc_lights_lynx

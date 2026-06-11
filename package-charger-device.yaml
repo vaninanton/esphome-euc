@@ -49,6 +49,8 @@ sensor:
     lambda: |-
       // Reassembly: packet length = b[0]+1
       static std::vector<uint8_t> buf_${charger_id};
+      if (buf_${charger_id}.size() + x.size() > 512)
+        buf_${charger_id}.clear();
       for (auto byte : x) buf_${charger_id}.push_back(byte);
       while (buf_${charger_id}.size() >= 2) {
         size_t pkt_len = buf_${charger_id}[0] + 1;

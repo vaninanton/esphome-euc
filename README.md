@@ -101,14 +101,14 @@ secrets.yaml.example           — шаблон secrets
 | Temperature controller | sensor | Температура контроллера, °C |
 | Mileage current | sensor | Пробег за поездку, km |
 | Mileage total | sensor | Общий пробег, km |
-| BMS Cell Voltage Min/Max/Delta | sensor | Мин/макс/разброс ячеек, V |
-| BMS Temperature Min/Max | sensor | Мин/макс по 12 датчикам BMS, °C |
-| BMS Left/Right Temperature 1–6 | sensor | Все 12 температур BMS, °C |
+| BMS Left/Right Temperature 1–6 | sensor | 12 температур BMS, °C |
 | Auto Off | sensor | Таймер автовыключения, сек (NaN = выключен) |
 | Tho_ra | sensor | Наклон педалей, % |
 | Firmware Version | text_sensor | Версия прошивки колеса |
-| Headlight | text_sensor | Уровень фары: Off / Level 1 / Level 2 / Level 3 |
+| Headlight | binary_sensor | Состояние фары |
 | Charging | binary_sensor | Идёт зарядка |
+| Low power mode | binary_sensor | Режим пониженного энергопотребления |
+| High speed mode | binary_sensor | Высокоскоростной режим |
 | Connected | binary_sensor | BLE подключено |
 | Lights | switch | Управление фарой |
 | Max charging voltage | number | Максимальное напряжение зарядки, V |

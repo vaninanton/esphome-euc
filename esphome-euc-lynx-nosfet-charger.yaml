@@ -23,6 +23,7 @@ packages:
       euc_cell_count: 36
       euc_charge_voltage_min: 147.0
       euc_charge_stop_offset: 682
+      euc_charge_voltage_offset: 145
   - !include
     file: package-veteran-device.yaml
     vars:
@@ -33,7 +34,8 @@ packages:
       euc_nominal_voltage: 126
       euc_cell_count: 30
       euc_charge_voltage_min: 122.0
-      euc_charge_stop_offset: 0
+      euc_charge_stop_offset: -70
+      euc_charge_voltage_offset: 121
   - !include
     file: package-charger-device.yaml
     vars:
@@ -44,20 +46,11 @@ esp32:
   board: esp32dev
   framework:
     type: esp-idf
+    advanced:
+      minimum_chip_revision: "3.1"
+      sram1_as_iram: true
 logger:
   level: INFO
-  logs:
-    ble_sensor: WARN
-    binary_sensor: WARN
-    component: WARN
-    esp32_ble: WARN
-    esp32_ble_client: WARN
-    light: WARN
-    sensor: WARN
-    number: WARN
-    text_sensor: WARN
-    esp32_ble_tracker: WARN
-    safe_mode: WARN
 wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
@@ -115,12 +108,6 @@ sensor:
       name: "Loop Time"
       unit_of_measurement: "ms"
       state_class: measurement
-    cpu_frequency:
-      name: "CPU Frequency"
-      unit_of_measurement: "MHz"
-      state_class: measurement
-      filters:
-        - lambda: "return x / 1000000.0f;"
 output:
   - platform: gpio
     pin:

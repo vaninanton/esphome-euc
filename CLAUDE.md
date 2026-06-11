@@ -47,12 +47,16 @@ ESPHome custom component for Veteran/NOSFET BLE protocol.
 
 **`veteran.h` / `veteran.cpp`** — C++ component. Key methods:
 - `parse_ble_packet()` — called from YAML lambda on BLE notify; reassembles BLE chunks into full packets using `ble_buffer_`, validates CRC32, queues to `packet_queue_`
-- `loop()` — drains `packet_queue_`, calls `parse_packet()` → `publish_state_from_euc()`
-- `parse_packet()` — dispatches common payload (offset 4–35, all packets) and extended payload (offset 46+, sub-typed) into `euc_` struct
-- `clear_realtime_data()` — called on BLE disconnect; resets `euc_` to `{}` but preserves mileage, tho_ra, firmware version, charging_stop_voltage
-- `get_charge_packet(voltage)` — builds BLE command; uses `charge_voltage_offset_` (default 145.0, set per-device)
+- `loop()` — drains `packet_queue_` (one packet per loop call), calls `parse_packet()` → `publish_state_from_euc()` throttled to 2000 ms
+- `parse_packet()` — dispatches common payload (offset 4–35, all packets) and extended payload (offset 46+, sub-typed by SubType enum) into `euc_` struct
+- `clear_realtime_data()` — called on BLE disconnect; resets `euc_` to `{}` but preserves mileage, tho_ra, low_power_mode, high_speed_mode, firmware version, charging_stop_voltage
+- `get_charge_packet(voltage)` — builds BLE command; uses `charge_voltage_offset_` (default 145.0, set per-device via `CONF_CHARGE_VOLTAGE_OFFSET`)
 
 `EUCData euc_` is the central state struct. `publish_state_from_euc()` pushes it to all ESPHome sensors.
+
+Extended payload sub-types (byte 46): `0x00/0x04` Live (controller temp, BMS currents, headlight level), `0x01–0x03` BMS left cells+temps, `0x05–0x07` BMS right cells+temps, `0x08` Settings (headlight, low/high-speed mode, tho_ra, charging_stop_voltage).
+
+42S batteries are theoretically supported: `parse_bms_temps_and_cells()` reads cells 37–42 when packet size ≥ 83 bytes (`BMS_CELLS_37_BASE`). Set `euc_cell_count: 42` in vars.
 
 ## Package Variables
 
@@ -66,7 +70,8 @@ ESPHome custom component for Veteran/NOSFET BLE protocol.
 | `euc_nominal_voltage` | `151.2` | 36S=151.2, 30S=126 |
 | `euc_cell_count` | `36` | For BMS min/max/delta calculation |
 | `euc_charge_voltage_min` | `147.0` | Lower bound for `Max charging voltage` number |
-| `euc_charge_stop_offset` | `682` | Protocol offset: Lynx=682, Aero=0 |
+| `euc_charge_stop_offset` | `682` | Decode offset for incoming charging_stop_voltage: Lynx=682, Aero=-70 |
+| `euc_charge_voltage_offset` | `145` | Base voltage for outgoing set_max_charge command: Lynx=145, Aero=121 |
 
 `package-charger-device.yaml` vars: `charger_id`, `charger_mac`, `charger_device_id`.
 
