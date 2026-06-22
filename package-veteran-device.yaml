@@ -5,6 +5,7 @@
 #   euc_charge_voltage_min: мин. заряд (обычно nominal − 4.2, напр. 147 для Lynx)
 #   euc_charge_stop_offset: для парсинга charging_stop_voltage из входящих пакетов (Lynx 682, Aero −70)
 #   euc_charge_voltage_offset: base voltage для исходящей команды set_max_charge (Lynx 145, Aero 121)
+#   euc_disabled_entities: список ключей сущностей, которые не создавать (напр. [low_power_mode, high_speed_mode] для Aero)
 ---
 ble_client:
   - mac_address: "${euc_mac}"
@@ -56,12 +57,19 @@ veteran:
     charge_voltage_offset: ${euc_charge_voltage_offset}
     max_charging_voltage_id: max_charging_voltage_${euc_id}
     switch_lights_id: euc_lights_${euc_id}
+    disabled_entities: ${euc_disabled_entities}
 switch:
-  # Внутренний переключатель BLE (управляется общим «Bluetooth» в основном yaml)
+  # Переключатель BLE этого устройства. Также управляется общим «Bluetooth» в основном yaml.
   - platform: ble_client
+    name: "Connect"
     id: ble_connect_${euc_id}
     ble_client_id: euc_${euc_id}
-    internal: true
+    device_id: ${euc_device_id}
+    icon: mdi:bluetooth-connect
+    entity_category: config
+    web_server:
+      sorting_group_id: "sorting_group_${euc_id}"
+      sorting_weight: 1
   - platform: template
     name: "Lights"
     id: euc_lights_${euc_id}

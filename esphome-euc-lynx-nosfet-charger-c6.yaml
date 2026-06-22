@@ -14,6 +14,12 @@ esphome:
       name: "Nosfet Aero"
     - id: charger_device
       name: "Fast charger"
+  # XIAO ESP32C6: enable RF switch (GPIO3 LOW) and select onboard antenna (GPIO14 LOW)
+  on_boot:
+    priority: 800
+    then:
+      - output.turn_off: rf_switch_power
+      - output.turn_off: antenna_select
 packages:
   - !include
     file: package-veteran-device.yaml
@@ -48,12 +54,10 @@ packages:
       charger_mac: !secret fast_charger_mac
       charger_device_id: charger_device
 esp32:
-  board: esp32dev
+  board: seeed_xiao_esp32c6
+  variant: esp32c6
   framework:
     type: esp-idf
-    advanced:
-      minimum_chip_revision: "3.1"
-      sram1_as_iram: true
 logger:
   level: INFO
 wifi:
@@ -86,11 +90,21 @@ web_server:
     - id: sorting_group_nosfet
       name: "Nosfet Aero"
       sorting_weight: 30
+# XIAO ESP32C6 RF antenna switch:
+#   GPIO3  = RF switch power, must be LOW to enable the switch
+#   GPIO14 = antenna select, LOW = onboard PCB antenna, HIGH = external u.FL
 output:
   - platform: gpio
+    pin: GPIO3
+    id: rf_switch_power
+  - platform: gpio
+    pin: GPIO14
+    id: antenna_select
+  # Onboard user LED (yellow) is GPIO15, active-low
+  - platform: gpio
     pin:
-      number: GPIO2
-      ignore_strapping_warning: true
+      number: GPIO15
+      inverted: true
     id: gpio_d2
 light:
   - platform: binary
@@ -140,7 +154,7 @@ binary_sensor:
             - light.turn_off: status
   - platform: gpio
     pin:
-      number: GPIO0
+      number: GPIO9
       inverted: true
       mode: INPUT_PULLUP
       ignore_strapping_warning: true

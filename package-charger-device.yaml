@@ -1,8 +1,16 @@
-# Пакет зарядного устройства Fast charger (BLE).
+# Пакет зарядного устройства HW Smart Fast Charger (BLE).
 # Vars: charger_id, charger_mac, charger_device_id
+# Компонент: github://vaninanton/esphome-euc-hw-smart-charger (components/charger)
 # Протокол: сервис FFE1, FFE2=notify (rx), FFE3=write (tx)
-# CRC команды: сумма байт начиная с индекса 1 (mod 256)
 ---
+charger:
+  - id: charger_${charger_id}
+    id_prefix: ${charger_id}
+    device_id: ${charger_device_id}
+    sorting_group_id: "sorting_group_${charger_id}"
+    target_voltage_id: charger_target_voltage_${charger_id}
+    target_current_id: charger_target_current_${charger_id}
+
 ble_client:
   - mac_address: "${charger_mac}"
     id: ble_${charger_id}
@@ -12,12 +20,11 @@ ble_client:
         - lambda: |-
             id(charger_connected_${charger_id}).publish_state(true);
         - delay: 200ms
-        # Init sequence: firmware version, config, current values
         - ble_client.ble_write:
             id: ble_${charger_id}
             service_uuid: FFE1
             characteristic_uuid: FFE3
-            value: [0x02, 0x01, 0x01]
+            value: !lambda "return id(charger_${charger_id}).get_query_packet();"
         - delay: 100ms
         - ble_client.ble_write:
             id: ble_${charger_id}
@@ -34,7 +41,6 @@ ble_client:
       then:
         - lambda: |-
             id(charger_connected_${charger_id}).publish_state(false);
-            id(charger_charging_${charger_id}).publish_state(false);
 
 sensor:
   - platform: ble_client
@@ -47,220 +53,8 @@ sensor:
     service_uuid: FFE1
     characteristic_uuid: FFE2
     lambda: |-
-      // Reassembly: packet length = b[0]+1
-      static std::vector<uint8_t> buf_${charger_id};
-      if (buf_${charger_id}.size() + x.size() > 512)
-        buf_${charger_id}.clear();
-      for (auto byte : x) buf_${charger_id}.push_back(byte);
-      while (buf_${charger_id}.size() >= 2) {
-        size_t pkt_len = buf_${charger_id}[0] + 1;
-        if (buf_${charger_id}.size() < pkt_len) break;
-        std::vector<uint8_t> pkt(buf_${charger_id}.begin(), buf_${charger_id}.begin() + pkt_len);
-        buf_${charger_id}.erase(buf_${charger_id}.begin(), buf_${charger_id}.begin() + pkt_len);
-
-        // CMD 0x06: get_values response (49 bytes)
-        // [2..5]=inV [6..9]=inA [10..13]=freq [14..17]=temp2 [18..21]=temp1
-        // [22..25]=outV [26..29]=outA [34..37]=eff [38]=status [39..42]=ah [43..46]=wh
-        if (pkt.size() >= 49 && pkt[1] == 0x06) {
-          auto rd32 = [&](int i) -> float {
-            uint32_t v = (uint32_t)pkt[i] | ((uint32_t)pkt[i+1]<<8) | ((uint32_t)pkt[i+2]<<16) | ((uint32_t)pkt[i+3]<<24);
-            float f; memcpy(&f, &v, 4); return f;
-          };
-          float out_v = rd32(22), out_a = rd32(26);
-          id(charger_out_voltage_${charger_id}).publish_state(out_v);
-          id(charger_out_current_${charger_id}).publish_state(out_a);
-          id(charger_out_power_${charger_id}).publish_state(out_v * out_a);
-          id(charger_in_voltage_${charger_id}).publish_state(rd32(2));
-          id(charger_in_current_${charger_id}).publish_state(rd32(6));
-          id(charger_frequency_${charger_id}).publish_state(rd32(10));
-          id(charger_temp1_${charger_id}).publish_state(rd32(18));
-          id(charger_temp2_${charger_id}).publish_state(rd32(14));
-          float eff = rd32(34);
-          id(charger_efficiency_${charger_id}).publish_state(eff);
-          id(charger_ah_${charger_id}).publish_state(rd32(39));
-          id(charger_wh_${charger_id}).publish_state(rd32(43));
-          bool charging = (pkt[38] == 0);
-          id(charger_charging_${charger_id}).publish_state(charging);
-        }
-        // CMD 0x05: get_config response (106 bytes) — setV@2, setA@6
-        else if (pkt.size() >= 106 && pkt[1] == 0x05) {
-          auto rd32 = [&](int i) -> float {
-            uint32_t v = (uint32_t)pkt[i] | ((uint32_t)pkt[i+1]<<8) | ((uint32_t)pkt[i+2]<<16) | ((uint32_t)pkt[i+3]<<24);
-            float f; memcpy(&f, &v, 4); return f;
-          };
-          float set_v = rd32(2), set_a = rd32(6);
-          id(charger_set_voltage_${charger_id}).publish_state(set_v);
-          id(charger_set_current_${charger_id}).publish_state(set_a);
-          id(charger_target_voltage_${charger_id}).publish_state(set_v);
-          id(charger_target_current_${charger_id}).publish_state(set_a);
-        }
-      }
+      id(charger_${charger_id}).parse_ble_packet(x);
       return {};
-
-  - platform: template
-    name: "Out Voltage"
-    id: charger_out_voltage_${charger_id}
-    device_id: ${charger_device_id}
-    unit_of_measurement: "V"
-    device_class: voltage
-    state_class: measurement
-    accuracy_decimals: 2
-    icon: mdi:flash
-    web_server:
-      sorting_group_id: "sorting_group_${charger_id}"
-      sorting_weight: 0
-
-  - platform: template
-    name: "Out Current"
-    id: charger_out_current_${charger_id}
-    device_id: ${charger_device_id}
-    unit_of_measurement: "A"
-    device_class: current
-    state_class: measurement
-    accuracy_decimals: 2
-    icon: mdi:current-dc
-    web_server:
-      sorting_group_id: "sorting_group_${charger_id}"
-      sorting_weight: 1
-
-  - platform: template
-    name: "Out Power"
-    id: charger_out_power_${charger_id}
-    device_id: ${charger_device_id}
-    unit_of_measurement: "W"
-    device_class: power
-    state_class: measurement
-    accuracy_decimals: 1
-    icon: mdi:lightning-bolt
-    web_server:
-      sorting_group_id: "sorting_group_${charger_id}"
-      sorting_weight: 2
-
-  - platform: template
-    name: "In Voltage"
-    id: charger_in_voltage_${charger_id}
-    device_id: ${charger_device_id}
-    unit_of_measurement: "V"
-    device_class: voltage
-    state_class: measurement
-    accuracy_decimals: 1
-    icon: mdi:power-plug
-    web_server:
-      sorting_group_id: "sorting_group_${charger_id}"
-      sorting_weight: 10
-
-  - platform: template
-    name: "In Current"
-    id: charger_in_current_${charger_id}
-    device_id: ${charger_device_id}
-    unit_of_measurement: "A"
-    device_class: current
-    state_class: measurement
-    accuracy_decimals: 2
-    icon: mdi:current-ac
-    web_server:
-      sorting_group_id: "sorting_group_${charger_id}"
-      sorting_weight: 11
-
-  - platform: template
-    name: "Frequency"
-    id: charger_frequency_${charger_id}
-    device_id: ${charger_device_id}
-    unit_of_measurement: "Hz"
-    device_class: frequency
-    state_class: measurement
-    accuracy_decimals: 1
-    icon: mdi:sine-wave
-    web_server:
-      sorting_group_id: "sorting_group_${charger_id}"
-      sorting_weight: 12
-
-  - platform: template
-    name: "Temp 1"
-    id: charger_temp1_${charger_id}
-    device_id: ${charger_device_id}
-    unit_of_measurement: "°C"
-    device_class: temperature
-    state_class: measurement
-    accuracy_decimals: 1
-    web_server:
-      sorting_group_id: "sorting_group_${charger_id}"
-      sorting_weight: 20
-
-  - platform: template
-    name: "Temp 2"
-    id: charger_temp2_${charger_id}
-    device_id: ${charger_device_id}
-    unit_of_measurement: "°C"
-    device_class: temperature
-    state_class: measurement
-    accuracy_decimals: 1
-    web_server:
-      sorting_group_id: "sorting_group_${charger_id}"
-      sorting_weight: 21
-
-  - platform: template
-    name: "Efficiency"
-    id: charger_efficiency_${charger_id}
-    device_id: ${charger_device_id}
-    unit_of_measurement: "%"
-    state_class: measurement
-    accuracy_decimals: 1
-    icon: mdi:percent
-    web_server:
-      sorting_group_id: "sorting_group_${charger_id}"
-      sorting_weight: 30
-
-  - platform: template
-    name: "Charge Ah"
-    id: charger_ah_${charger_id}
-    device_id: ${charger_device_id}
-    unit_of_measurement: "Ah"
-    state_class: total_increasing
-    accuracy_decimals: 3
-    icon: mdi:battery-charging
-    web_server:
-      sorting_group_id: "sorting_group_${charger_id}"
-      sorting_weight: 31
-
-  - platform: template
-    name: "Charge Wh"
-    id: charger_wh_${charger_id}
-    device_id: ${charger_device_id}
-    unit_of_measurement: "Wh"
-    device_class: energy
-    state_class: total_increasing
-    accuracy_decimals: 2
-    icon: mdi:battery-charging-high
-    web_server:
-      sorting_group_id: "sorting_group_${charger_id}"
-      sorting_weight: 32
-
-  - platform: template
-    name: "Set Voltage"
-    id: charger_set_voltage_${charger_id}
-    device_id: ${charger_device_id}
-    unit_of_measurement: "V"
-    device_class: voltage
-    state_class: measurement
-    accuracy_decimals: 1
-    icon: mdi:tune
-    web_server:
-      sorting_group_id: "sorting_group_${charger_id}"
-      sorting_weight: 40
-
-  - platform: template
-    name: "Set Current"
-    id: charger_set_current_${charger_id}
-    device_id: ${charger_device_id}
-    unit_of_measurement: "A"
-    device_class: current
-    state_class: measurement
-    accuracy_decimals: 1
-    icon: mdi:tune
-    web_server:
-      sorting_group_id: "sorting_group_${charger_id}"
-      sorting_weight: 41
 
 binary_sensor:
   - platform: template
@@ -273,29 +67,27 @@ binary_sensor:
       sorting_group_id: "sorting_group_${charger_id}"
       sorting_weight: 0
 
-  - platform: template
-    id: charger_charging_${charger_id}
-    name: "Charging"
-    icon: mdi:battery-charging
-    device_class: battery_charging
+switch:
+  - platform: ble_client
+    name: "Connect"
+    id: ble_connect_${charger_id}
+    ble_client_id: ble_${charger_id}
     device_id: ${charger_device_id}
+    icon: mdi:bluetooth-connect
+    entity_category: config
     web_server:
       sorting_group_id: "sorting_group_${charger_id}"
       sorting_weight: 1
-
-switch:
-  - platform: ble_client
-    id: ble_connect_${charger_id}
-    ble_client_id: ble_${charger_id}
-    internal: true
 
   - platform: template
     name: "Charge"
     id: charger_charge_switch_${charger_id}
     device_id: ${charger_device_id}
-    optimistic: true
     restore_mode: DISABLED
     icon: mdi:ev-station
+    # Reflect the charger's real charging state (from the status packet),
+    # not just the last toggle the user pressed.
+    lambda: "return id(charger_${charger_id}).get_data().charging;"
     web_server:
       sorting_group_id: "sorting_group_${charger_id}"
       sorting_weight: 50
@@ -304,13 +96,13 @@ switch:
           id: ble_${charger_id}
           service_uuid: FFE1
           characteristic_uuid: FFE3
-          value: [0x06, 0x0C, 0x00, 0x00, 0x00, 0x00, 0x0C]
+          value: !lambda "return id(charger_${charger_id}).get_toggle_off_packet(0x0C);"
     turn_off_action:
       - ble_client.ble_write:
           id: ble_${charger_id}
           service_uuid: FFE1
           characteristic_uuid: FFE3
-          value: [0x06, 0x0C, 0x01, 0x00, 0x00, 0x00, 0x0D]
+          value: !lambda "return id(charger_${charger_id}).get_toggle_on_packet(0x0C);"
 
   - platform: template
     name: "Auto-Stop"
@@ -328,24 +120,22 @@ switch:
           id: ble_${charger_id}
           service_uuid: FFE1
           characteristic_uuid: FFE3
-          value: [0x06, 0x14, 0x01, 0x00, 0x00, 0x00, 0x15]
+          value: !lambda "return id(charger_${charger_id}).get_toggle_on_packet(0x14);"
     turn_off_action:
       - ble_client.ble_write:
           id: ble_${charger_id}
           service_uuid: FFE1
           characteristic_uuid: FFE3
-          value: [0x06, 0x14, 0x00, 0x00, 0x00, 0x00, 0x14]
+          value: !lambda "return id(charger_${charger_id}).get_toggle_off_packet(0x14);"
 
 number:
-  # Target voltage: float32 LE, CRC = sum(bytes[1:]) & 0xFF
-  # Supported range 100..165V, 0.1V step
   - platform: template
     name: "Target Voltage"
     id: charger_target_voltage_${charger_id}
     device_id: ${charger_device_id}
     optimistic: true
-    min_value: 100
-    max_value: 165
+    min_value: 126
+    max_value: 151.2
     step: 0.1
     unit_of_measurement: "V"
     icon: mdi:flash
@@ -358,14 +148,8 @@ number:
           id: ble_${charger_id}
           service_uuid: FFE1
           characteristic_uuid: FFE3
-          value: !lambda |-
-            float v = x;
-            uint32_t bits; memcpy(&bits, &v, 4);
-            uint8_t b0 = bits & 0xFF, b1 = (bits>>8)&0xFF, b2 = (bits>>16)&0xFF, b3 = (bits>>24)&0xFF;
-            uint8_t crc = (0x07 + b0 + b1 + b2 + b3) & 0xFF;
-            return {0x06, 0x07, b0, b1, b2, b3, crc};
+          value: !lambda "return id(charger_${charger_id}).get_set_voltage_packet(x);"
 
-  # Target current: float32 LE, same CRC scheme
   - platform: template
     name: "Target Current"
     id: charger_target_current_${charger_id}
@@ -385,12 +169,7 @@ number:
           id: ble_${charger_id}
           service_uuid: FFE1
           characteristic_uuid: FFE3
-          value: !lambda |-
-            float v = x;
-            uint32_t bits; memcpy(&bits, &v, 4);
-            uint8_t b0 = bits & 0xFF, b1 = (bits>>8)&0xFF, b2 = (bits>>16)&0xFF, b3 = (bits>>24)&0xFF;
-            uint8_t crc = (0x08 + b0 + b1 + b2 + b3) & 0xFF;
-            return {0x06, 0x08, b0, b1, b2, b3, crc};
+          value: !lambda "return id(charger_${charger_id}).get_set_current_packet(x);"
 
 interval:
   - interval: 1s
@@ -403,4 +182,17 @@ interval:
                 id: ble_${charger_id}
                 service_uuid: FFE1
                 characteristic_uuid: FFE3
-                value: [0x02, 0x06, 0x06]
+                value: !lambda "return id(charger_${charger_id}).get_query_packet();"
+  # Periodically re-query config (02 05 05) so Set Voltage/Current reflect the
+  # actual values after the user changes them, not just at connect time.
+  - interval: 5s
+    then:
+      - if:
+          condition:
+            binary_sensor.is_on: charger_connected_${charger_id}
+          then:
+            - ble_client.ble_write:
+                id: ble_${charger_id}
+                service_uuid: FFE1
+                characteristic_uuid: FFE3
+                value: [0x02, 0x05, 0x05]

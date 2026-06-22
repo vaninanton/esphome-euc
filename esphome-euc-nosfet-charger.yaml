@@ -1,6 +1,8 @@
 external_components:
   - source: github://vaninanton/esphome-euc-leaperkim-nosfet@main
     components: [veteran]
+  - source: github://vaninanton/esphome-euc-hw-smart-charger@main
+    components: [charger]
 esphome:
   name: esphome-euc
   friendly_name: ESPHome EUC Sensor
@@ -23,6 +25,7 @@ packages:
       euc_charge_voltage_min: 122.0
       euc_charge_stop_offset: -70
       euc_charge_voltage_offset: 121
+      euc_disabled_entities: [low_power_mode, high_speed_mode]
   - !include
     file: package-charger-device.yaml
     vars:
@@ -65,48 +68,15 @@ web_server:
   include_internal: false
   version: 3
   sorting_groups:
-    - id: sorting_group_nosfet
-      name: "Nosfet Aero"
+    - id: sorting_group_configuration
+      name: "Configuration"
       sorting_weight: 0
     - id: sorting_group_fast_charger
       name: "Fast charger"
       sorting_weight: 10
-    - id: sorting_group_diagnostic
-      name: "Diagnostic"
-      sorting_weight: 100
-debug:
-  update_interval: 10s
-sensor:
-  - platform: debug
-    free:
-      name: "Heap Free"
-      unit_of_measurement: "B"
-      device_class: data_size
-      state_class: measurement
-    block:
-      name: "Heap Max Block"
-      unit_of_measurement: "B"
-      device_class: data_size
-      state_class: measurement
-    min_free:
-      name: "Heap Min Free"
-      unit_of_measurement: "B"
-      device_class: data_size
-      state_class: measurement
-    fragmentation:
-      name: "Heap Fragmentation"
-      unit_of_measurement: "%"
-      state_class: measurement
-    loop_time:
-      name: "Loop Time"
-      unit_of_measurement: "ms"
-      state_class: measurement
-    cpu_frequency:
-      name: "CPU Frequency"
-      unit_of_measurement: "MHz"
-      state_class: measurement
-      filters:
-        - lambda: "return x / 1000000.0f;"
+    - id: sorting_group_nosfet
+      name: "Nosfet Aero"
+      sorting_weight: 30
 output:
   - platform: gpio
     pin:
@@ -127,6 +97,9 @@ switch:
     id: ble_all
     icon: mdi:bluetooth
     entity_category: config
+    web_server:
+      sorting_group_id: sorting_group_configuration
+      sorting_weight: 0
     lambda: "return id(connected_nosfet).state || id(charger_connected_fast_charger).state;"
     turn_off_action:
       - switch.turn_off: ble_connect_nosfet
@@ -139,8 +112,8 @@ button:
     name: "Restart ESP32"
     entity_category: diagnostic
     web_server:
-      sorting_group_id: sorting_group_diagnostic
-      sorting_weight: 0
+      sorting_group_id: sorting_group_configuration
+      sorting_weight: 1
 binary_sensor:
   - platform: template
     id: any_ble_connected
@@ -163,8 +136,5 @@ binary_sensor:
     name: "Boot Button"
     internal: true
     entity_category: diagnostic
-    web_server:
-      sorting_group_id: sorting_group_diagnostic
-      sorting_weight: 1
     on_press:
       - switch.toggle: ble_all
