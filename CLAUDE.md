@@ -40,9 +40,13 @@ Each config composes reusable packages via `!include`:
 
 The entry-point YAML owns: `esphome:` devices list, `web_server:` sorting_groups, and the `switch: Bluetooth` / `binary_sensor: any_ble_connected` lambdas that reference all active device IDs by name.
 
-## Custom Component: `my_components/veteran/`
+## Custom Component: `veteran`
 
-ESPHome custom component for Veteran/NOSFET BLE protocol.
+ESPHome custom component for Veteran/NOSFET BLE protocol. **Lives in a separate repo** —
+`github://vaninanton/esphome-euc-leaperkim-nosfet` (`components/veteran/`), pulled in via
+`external_components`. To iterate locally, temporarily point `source:` at
+`../esphome-euc-leaperkim-nosfet/components` and revert before committing. Same arrangement for
+the `charger` component (`github://vaninanton/esphome-euc-hw-smart-charger`).
 
 **`__init__.py`** — ESPHome codegen. `ENTITY_REGISTRY` is the single source of truth for all sensors/binary_sensors/text_sensors: name, icon, device_class, unit, sorting weight. Adding a new sensor means adding one entry here + the corresponding setter/field in the C++ files.
 
@@ -68,18 +72,23 @@ Extended payload sub-types (byte 46): `0x00/0x04` Live (controller temp, BMS cur
 | `euc_id` | `lynx` | Used as C++ ID prefix — no spaces |
 | `euc_mac` | `!secret euc_veteran_mac` | |
 | `euc_device_id` | `lynx_device` | Must match `esphome: devices:` entry |
-| `euc_nominal_voltage` | `151.2` | 36S=151.2, 30S=126 |
+| `euc_nominal_voltage` | `151.2` | Full-charge voltage, i.e. cells × 4.2 — NOT the nominal. 36S=151.2, 30S=126 |
 | `euc_cell_count` | `36` | For BMS min/max/delta calculation |
 | `euc_charge_voltage_min` | `147.0` | Lower bound for `Max charging voltage` number |
-| `euc_charge_stop_offset` | `682` | Decode offset for incoming charging_stop_voltage: Lynx=682, Aero=-70 |
-| `euc_charge_voltage_offset` | `145` | Base voltage for outgoing set_max_charge command: Lynx=145, Aero=121 |
+| `euc_charge_voltage_offset` | `145` | `charge_voltage_base`: Lynx=145, Aero/Xeno=121 |
 
 `package-charger-device.yaml` vars: `charger_id`, `charger_mac`, `charger_device_id`.
 
-`euc_charge_stop_offset` is per-firmware and must be derived empirically. The component computes
-`charging_stop_voltage = read_u16_be(packet) + offset` and publishes it as `/10`. To find it: flash with any
-offset, read the published `Max charging voltage`, recover the raw value as `published * 10 - offset`, then set
-`offset = actual_volts * 10 - raw`.
+`euc_charge_voltage_offset` is used in **both** directions and needs no empirical calibration:
+outgoing `set_max_charge` encodes `byte24 = clamp((volts - base) * 10, 0, 120)`, and the incoming
+value decodes as `base * 10 + packet[64]`, published as `/10`. Byte 64 is the same byte the command
+writes. For Leaperkim wheels the base also arrives in Settings `[65]` (`0` means 145); Nosfet
+firmware puts something else there, so it stays configured by hand.
+
+A `euc_charge_stop_offset` var used to exist for decoding, with per-wheel values found by trial
+(Lynx 682, Aero −70, Xeno 442). It was an artifact: the old formula read a `u16` at offset 63,
+whose high byte is the key-tone volume, and each offset was exactly `base * 10 - packet[63] * 256`.
+Removed — do not reintroduce it.
 
 ## ESP32-C6 BLE gotcha
 
@@ -113,5 +122,9 @@ fast_charger_mac
 
 ## Protocol Docs
 
-- `docs/veteran-protocol.md` — full BLE packet layout for Veteran/NOSFET
-- `docs/CHARGER.md` — BLE protocol for Fast charger (FFE1 service)
+Both moved into their component repos:
+
+- `esphome-euc-leaperkim-nosfet/docs/veteran-protocol.md` — BLE packet layout for Veteran/NOSFET,
+  outgoing command opcodes, protocol-version to model map
+- `esphome-euc-hw-smart-charger/docs/CHARGER.md` — BLE protocol for the Fast charger (FFE1 service)
+- `docs/inmotion-protocol.md` — InMotion notes (this repo)

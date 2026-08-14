@@ -174,10 +174,10 @@ packages:
       euc_name: "My Wheel"
       euc_mac: !secret euc_mywheel_mac
       euc_device_id: mywheel_device
-      euc_nominal_voltage: 100.8   # 24S × 4.2V
+      euc_nominal_voltage: 100.8   # напряжение полного заряда: 24S × 4.2V
       euc_cell_count: 24
       euc_charge_voltage_min: 96.0
-      euc_charge_stop_offset: 0
+      euc_charge_voltage_offset: 97   # charge_voltage_base, ≈ банок × 4.03
 ```
 
 И добавь устройство и sorting_group в `esphome:` / `web_server:` секции.

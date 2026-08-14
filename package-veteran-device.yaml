@@ -3,7 +3,6 @@
 #   euc_nominal_voltage: напряжение полного заряда (36S×4.2V=151.2, 30S×4.2=126)
 #   euc_cell_count: кол-во ячеек батареи (36 для Lynx, 30 для Nosfet Aero)
 #   euc_charge_voltage_min: мин. заряд (обычно nominal − 4.2, напр. 147 для Lynx)
-#   euc_charge_stop_offset: для парсинга charging_stop_voltage из входящих пакетов (Lynx 682, Aero −70)
 #   euc_charge_voltage_offset: base voltage для исходящей команды set_max_charge (Lynx 145, Aero 121)
 #   euc_disabled_entities: список ключей сущностей, которые не создавать (напр. [low_power_mode, high_speed_mode] для Aero)
 ---
@@ -53,7 +52,6 @@ veteran:
     sorting_group_id: "sorting_group_${euc_id}"
     nominal_voltage: ${euc_nominal_voltage}
     cell_count: ${euc_cell_count}
-    charge_stop_voltage_offset: ${euc_charge_stop_offset}
     charge_voltage_offset: ${euc_charge_voltage_offset}
     max_charging_voltage_id: max_charging_voltage_${euc_id}
     switch_lights_id: euc_lights_${euc_id}
@@ -115,3 +113,22 @@ number:
           service_uuid: FFE0
           characteristic_uuid: FFE1
           value: !lambda "return id(veteran_${euc_id}).get_charge_packet(x);"
+button:
+  # Сброс счётчика поездки: два чанка 4C6B/4C64, опкод 0x0D с байтом 5 = 0x00.
+  # Проверено на Lynx (5.0.13): Mileage current -> 0, Mileage total не тронут.
+  # Байты видны в логе как "BLE out [clear_meter]".
+  - platform: template
+    name: "Reset trip"
+    id: euc_reset_trip_${euc_id}
+    device_id: ${euc_device_id}
+    icon: mdi:counter
+    entity_category: config
+    web_server:
+      sorting_group_id: "sorting_group_${euc_id}"
+      sorting_weight: 54
+    on_press:
+      - ble_client.ble_write:
+          id: euc_${euc_id}
+          service_uuid: FFE0
+          characteristic_uuid: FFE1
+          value: !lambda "return id(veteran_${euc_id}).get_clear_meter_packet();"

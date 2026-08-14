@@ -23,7 +23,6 @@ packages:
       euc_nominal_voltage: 151.2
       euc_cell_count: 36
       euc_charge_voltage_min: 147.0
-      euc_charge_stop_offset: 682
       euc_charge_voltage_offset: 145
       euc_disabled_entities: []
   - !include

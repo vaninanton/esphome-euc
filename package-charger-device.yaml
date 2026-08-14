@@ -171,6 +171,28 @@ number:
           characteristic_uuid: FFE3
           value: !lambda "return id(charger_${charger_id}).get_set_current_packet(x);"
 
+button:
+  # Кнопка "Clear" родного приложения — save_config(0x13, 0). Не поле CONFIG.
+  # get_toggle_off_packet выдаёт 06 13 00 00 00 00 13 — та же 4-байтовая форма тела,
+  # которую прибор принимает для тумблеров 0x0C/0x14.
+  # Обнуляет Charge Ah / Charge Wh — проверено на приборе, ответ 0x13 accepted (CHARGER.md §9).
+  # Эффект приходит через 2–5 с, не мгновенно: сразу после нажатия сенсоры ещё старые.
+  - platform: template
+    name: "Reset counters"
+    id: charger_reset_counters_${charger_id}
+    device_id: ${charger_device_id}
+    icon: mdi:backup-restore
+    entity_category: config
+    web_server:
+      sorting_group_id: "sorting_group_${charger_id}"
+      sorting_weight: 70
+    on_press:
+      - ble_client.ble_write:
+          id: ble_${charger_id}
+          service_uuid: FFE1
+          characteristic_uuid: FFE3
+          value: !lambda "return id(charger_${charger_id}).get_toggle_off_packet(0x13);"
+
 interval:
   - interval: 1s
     then:
