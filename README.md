@@ -4,7 +4,7 @@
 
 ## Возможности
 
-- Подключение до двух моноколёс одновременно (например, Veteran Lynx + NOSFET Aero)
+- Подключение нескольких моноколёс одновременно (например, Veteran Lynx + NOSFET Aero + NOSFET Xeno)
 - Мониторинг зарядного устройства Fast charger в реальном времени
 - Телеметрия: скорость, напряжение, заряд, температуры, пробег, BMS
 - Управление: фара, максимальное напряжение зарядки
@@ -30,14 +30,33 @@ cd esphome-euc
 
 Нужен реальный MAC вида `XX:XX:XX:XX:XX:XX`. Варианты:
 
-**macOS — системный лог (без доп. инструментов)**
+**macOS — в два шага**
+
+CoreBluetooth намеренно скрывает MAC: приложения (LightBlue, nRF Connect для iOS/macOS) видят только UUID, локальный для конкретного Mac. В унифицированном логе адреса и имена тоже редактируются как `<private>` — рецепт `log stream | grep adv-addr` на macOS 26 уже ничего не даёт.
+
+Рабочий путь — сопоставить имя с MAC через CoreBluetooth-UUID устройства.
+
+1. Найти UUID по имени:
 ```bash
-sudo log stream --predicate 'subsystem == "com.apple.bluetooth"' --info | grep -i "adv-addr"
+swift tools/ble-name-scan.swift
 ```
-Ищи строку вида `adv-addr: 88:56:A6:57:B4:F2-Public, ... devicename: Veteran`.
+```
+8F890222-CED7-02BA-4847-42E8C118AE46  rssi=-64  name=NF8687
+```
+
+2. Найти MAC по UUID — `bluetoothd` пишет связку адреса и UUID в открытом виде:
+```bash
+log show --last 30m --predicate 'subsystem == "com.apple.bluetooth"' --info \
+  | grep 8F890222 | grep 'associated with device'
+```
+```
+Address "Public 88:25:83:F6:56:1A" is already associated with device "8F890222-CED7-02BA-4847-42E8C118AE46"
+```
+
+Строка появляется, только если Mac уже пытался подключаться к устройству. Если её нет — подключись к колесу из штатного приложения (или просто дай Mac его «увидеть») и повтори. `sudo` не нужен.
 
 **Android — приложение nRF Connect**
-Scan → найди устройство по имени → MAC под названием устройства.
+Scan → найди устройство по имени → MAC под названием устройства. Android, в отличие от iOS/macOS, показывает настоящий MAC сразу.
 
 **Linux**
 ```bash
@@ -63,6 +82,7 @@ wifi_password: "ПарольОтWiFi"
 ha_encryption_key: "КлючИзHomeAssistant"
 euc_veteran_mac: "XX:XX:XX:XX:XX:XX"   # Veteran Lynx
 euc_nosfet_mac: "XX:XX:XX:XX:XX:XX"    # NOSFET Aero
+euc_xeno_mac: "XX:XX:XX:XX:XX:XX"      # NOSFET Xeno
 fast_charger_mac: "XX:XX:XX:XX:XX:XX" # Fast charger
 ```
 
@@ -83,6 +103,7 @@ esphome-euc-veteran.yaml       — основной конфиг, точка в�
 package-veteran-device.yaml    — пакет одного моноколеса Veteran/NOSFET
 package-charger-device.yaml    — пакет зарядного устройства Fast charger
 my_components/veteran/         — кастомный ESPHome-компонент (C++)
+tools/ble-name-scan.swift      — сканер BLE для macOS (имя → CoreBluetooth-UUID)
 docs/                          — протоколы BLE и описание устройств
 secrets.yaml.example           — шаблон secrets
 ```

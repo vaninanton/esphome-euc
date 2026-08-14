@@ -12,6 +12,8 @@ esphome:
       name: "Veteran Lynx"
     - id: nosfet_device
       name: "Nosfet Aero"
+    - id: xeno_device
+      name: "Nosfet Xeno"
     - id: charger_device
       name: "Fast charger"
   # XIAO ESP32C6: enable RF switch (GPIO3 LOW) and select onboard antenna (GPIO14 LOW)
@@ -48,6 +50,19 @@ packages:
       euc_charge_voltage_offset: 121
       euc_disabled_entities: [low_power_mode, high_speed_mode]
   - !include
+    file: package-veteran-device.yaml
+    vars:
+      euc_id: xeno
+      euc_name: "Nosfet Xeno"
+      euc_mac: !secret euc_xeno_mac
+      euc_device_id: xeno_device
+      euc_nominal_voltage: 126
+      euc_cell_count: 30
+      euc_charge_voltage_min: 122.0
+      euc_charge_stop_offset: 442
+      euc_charge_voltage_offset: 121
+      euc_disabled_entities: [low_power_mode, high_speed_mode]
+  - !include
     file: package-charger-device.yaml
     vars:
       charger_id: fast_charger
@@ -58,6 +73,16 @@ esp32:
   variant: esp32c6
   framework:
     type: esp-idf
+    sdkconfig_options:
+      # ESPHome форсит CONFIG_BT_BLE_42_FEATURES_SUPPORTED=y, а на C6 (SOC_BLE_50_SUPPORTED)
+      # CONFIG_BT_BLE_50_FEATURES_SUPPORTED по умолчанию тоже y. IDF в Kconfig прямо пишет:
+      # "BLE 4.2 and BLE 5.0 cannot be used simultaneously". В таком виде Bluedroid шлёт
+      # LE Extended Create Connection (0x2043), и контроллер отбивает его как Cmd Disallowed,
+      # из-за чего встаёт только одно BLE-соединение. Оставляем 4.2.
+      CONFIG_BT_BLE_50_FEATURES_SUPPORTED: n
+      # ESPHome под max_connections выставляет CONFIG_BTDM_CTRL_BLE_MAX_CONN — опцию
+      # контроллера классического ESP32. У C6 контроллер другой, его лимит задаём сами.
+      CONFIG_BT_LE_MAX_CONNECTIONS: "4"
 logger:
   level: INFO
 wifi:
@@ -90,6 +115,9 @@ web_server:
     - id: sorting_group_nosfet
       name: "Nosfet Aero"
       sorting_weight: 30
+    - id: sorting_group_xeno
+      name: "Nosfet Xeno"
+      sorting_weight: 40
 # XIAO ESP32C6 RF antenna switch:
 #   GPIO3  = RF switch power, must be LOW to enable the switch
 #   GPIO14 = antenna select, LOW = onboard PCB antenna, HIGH = external u.FL
@@ -113,6 +141,9 @@ light:
     output: gpio_d2
     internal: true
     entity_category: "diagnostic"
+# 4 BLE-клиента (Lynx + Aero + Xeno + charger) — дефолтных 3 слотов не хватает
+esp32_ble:
+  max_connections: 4
 esp32_ble_tracker:
 switch:
   - platform: template
@@ -123,14 +154,16 @@ switch:
     web_server:
       sorting_group_id: sorting_group_configuration
       sorting_weight: 0
-    lambda: "return id(connected_lynx).state || id(connected_nosfet).state || id(charger_connected_fast_charger).state;"
+    lambda: "return id(connected_lynx).state || id(connected_nosfet).state || id(connected_xeno).state || id(charger_connected_fast_charger).state;"
     turn_off_action:
       - switch.turn_off: ble_connect_lynx
       - switch.turn_off: ble_connect_nosfet
+      - switch.turn_off: ble_connect_xeno
       - switch.turn_off: ble_connect_fast_charger
     turn_on_action:
       - switch.turn_on: ble_connect_lynx
       - switch.turn_on: ble_connect_nosfet
+      - switch.turn_on: ble_connect_xeno
       - switch.turn_on: ble_connect_fast_charger
 button:
   - platform: restart
@@ -143,7 +176,7 @@ binary_sensor:
   - platform: template
     id: any_ble_connected
     internal: true
-    lambda: "return id(connected_lynx).state || id(connected_nosfet).state || id(charger_connected_fast_charger).state;"
+    lambda: "return id(connected_lynx).state || id(connected_nosfet).state || id(connected_xeno).state || id(charger_connected_fast_charger).state;"
     on_state:
       - if:
           condition:
