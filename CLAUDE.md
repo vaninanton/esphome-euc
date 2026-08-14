@@ -25,13 +25,14 @@ Always run `esphome config <file>.yaml` after editing any YAML to catch validati
 
 ## Project Structure
 
-Three entry-point configs, each a different device combination:
+Entry-point configs, each a different device combination:
 
 | File | Devices |
 |---|---|
-| `esphome-lynx-charger.yaml` | Veteran Lynx + Fast charger |
-| `esphome-nosfet-charger.yaml` | Nosfet Aero + Fast charger |
-| `esphome-lynx-nosfet-charger.yaml` | Veteran Lynx + Nosfet Aero + Fast charger |
+| `esphome-euc-lynx-charger.yaml` | Veteran Lynx + Fast charger |
+| `esphome-euc-nosfet-charger.yaml` | Nosfet Aero + Fast charger |
+| `esphome-euc-lynx-nosfet-charger.yaml` | Veteran Lynx + Nosfet Aero + Nosfet Xeno + Fast charger |
+| `esphome-euc-lynx-nosfet-charger-c6.yaml` | same, for XIAO ESP32C6 board |
 
 Each config composes reusable packages via `!include`:
 - `package-veteran-device.yaml` — one Veteran/NOSFET wheel (parameterised via vars)
@@ -75,12 +76,38 @@ Extended payload sub-types (byte 46): `0x00/0x04` Live (controller temp, BMS cur
 
 `package-charger-device.yaml` vars: `charger_id`, `charger_mac`, `charger_device_id`.
 
+`euc_charge_stop_offset` is per-firmware and must be derived empirically. The component computes
+`charging_stop_voltage = read_u16_be(packet) + offset` and publishes it as `/10`. To find it: flash with any
+offset, read the published `Max charging voltage`, recover the raw value as `published * 10 - offset`, then set
+`offset = actual_volts * 10 - raw`.
+
+## ESP32-C6 BLE gotcha
+
+On the C6 board, `esp32_ble` needs an sdkconfig override or only ONE BLE connection will ever establish:
+
+```yaml
+sdkconfig_options:
+  CONFIG_BT_BLE_50_FEATURES_SUPPORTED: n
+  CONFIG_BT_LE_MAX_CONNECTIONS: "4"
+```
+
+- **BLE 4.2 vs 5.0** — ESPHome forces `CONFIG_BT_BLE_42_FEATURES_SUPPORTED=y`, while on C6 (`SOC_BLE_50_SUPPORTED`)
+  `CONFIG_BT_BLE_50_FEATURES_SUPPORTED` defaults to `y`. IDF's Kconfig states outright that
+  "BLE 4.2 and BLE 5.0 cannot be used simultaneously". With both on, Bluedroid issues LE Extended Create
+  Connection (HCI `0x2043`), the controller rejects it as `Cmd Disallowed`, and every client after the first
+  fails with `status=133`.
+- **Connection slots** — ESPHome maps `max_connections` onto `CONFIG_BTDM_CTRL_BLE_MAX_CONN`, which is the
+  *classic ESP32* controller option. C6 uses `CONFIG_BT_LE_MAX_CONNECTIONS`, left at its default 3.
+
+Neither applies to the plain `esp32dev` configs: classic ESP32 has no BLE 5.0 at all, and its controller option
+is the one ESPHome already sets.
+
 ## Secrets
 
 ```yaml
 wifi_ssid / wifi_password
 ha_encryption_key
-euc_veteran_mac / euc_nosfet_mac
+euc_veteran_mac / euc_nosfet_mac / euc_xeno_mac
 fast_charger_mac
 ```
 
